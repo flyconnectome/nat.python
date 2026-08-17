@@ -4,7 +4,13 @@
 \alias{pandas2df}
 \title{Convert a pandas DataFrame to an R data frame}
 \usage{
-pandas2df(x, use_arrow = FALSE, keep_index = FALSE, tibble = use_arrow)
+pandas2df(
+  x,
+  use_arrow = FALSE,
+  keep_index = FALSE,
+  tibble = use_arrow,
+  bigint = c("auto", "integer64", "character")
+)
 }
 \arguments{
 \item{x}{A pandas \code{DataFrame} (a reticulate \code{pandas.core.frame.DataFrame}).}
@@ -16,6 +22,18 @@ pandas2df(x, use_arrow = FALSE, keep_index = FALSE, tibble = use_arrow)
 
 \item{tibble}{Whether to return a tibble rather than a base data frame.
 Defaults to \code{use_arrow}.}
+
+\item{bigint}{How to represent integer columns. \code{"auto"} (the default) maps
+each column to the narrowest faithful base R type: values fitting a 32-bit
+R \code{integer} become \code{integer}, larger values below 2^53 become \code{double}
+(exact), and values from 2^53 up to the signed 64-bit maximum become
+\code{bit64::integer64} -- reserving \code{integer64} for what base R cannot hold
+exactly. \code{"integer64"} returns every integer column as \code{bit64::integer64}
+for a stable schema regardless of magnitude. \code{"character"} behaves like
+\code{"auto"} but returns the large (>= 2^53) tier as character, as
+\code{data.table::fread()} offers. \code{uint64} values beyond the signed 64-bit
+range cannot be held by \code{integer64}; they are always returned as character,
+with a warning unless \code{bigint = "character"}.}
 }
 \value{
 An R \code{data.frame}, or a tibble when \code{tibble = TRUE}.
@@ -29,8 +47,11 @@ wrong: 64-bit integer ids, object-dtype columns, and datetimes.
 The default in-memory path converts with reticulate and then patches
 individual columns:
 \itemize{
-\item \code{int64}/\code{uint64} columns are recovered as \code{bit64::integer64} so large ids
-do not overflow to \code{NA}.
+\item Integer columns (\code{int64}, \code{uint64}, and \code{object} columns whose cells are
+all Python ints) are classified by magnitude so each maps to the
+narrowest faithful R type. This mirrors reticulate's own \code{py_to_r()}
+where reticulate is faithful, and reserves \code{bit64::integer64} for values
+base R cannot hold exactly -- see \code{bigint}.
 \item \code{object} columns whose cells are all scalar (or \code{NA}) are flattened from a
 list of length-1 vectors to an atomic vector, with integer-valued cells
 read as strings so arbitrary-precision Python ints round-trip. Genuine
@@ -39,7 +60,7 @@ list-valued columns (e.g. multi-select values) are left intact.
 }
 
 The optional \code{use_arrow} path round-trips through a Feather file and needs
-the Suggested \code{arrow} package.
+the Suggested \code{arrow} package; \code{bigint} does not apply to it.
 }
 \examples{
 \dontrun{

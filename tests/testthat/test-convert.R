@@ -4,8 +4,8 @@ test_that("null2na replaces NULLs", {
 })
 
 test_that("classify_object_values picks the natural R type", {
-  # small integers -> numeric
-  expect_identical(classify_object_values(c("1", "2", "3")), c(1, 2, 3))
+  # small integers -> integer (base R type, mirroring py_to_r on python ints)
+  expect_identical(classify_object_values(c("1", "2", "3")), c(1L, 2L, 3L))
   # big integers beyond 2^53 -> integer64
   big <- c("9007199254740993", "9007199254740994")
   out <- classify_object_values(big)
@@ -20,8 +20,63 @@ test_that("classify_object_values picks the natural R type", {
                    c(NA, NA))
   # NULL passes through
   expect_null(classify_object_values(NULL))
-  # int64-overflowing values -> NULL (leave the column alone)
-  expect_null(classify_object_values(c("18446744073709551615", "1")))
+  # int64-overflowing values -> character (faithful), with a warning
+  expect_warning(
+    ov <- classify_object_values(c("18446744073709551615", "1")),
+    "beyond the signed 64-bit range")
+  expect_identical(ov, c("18446744073709551615", "1"))
+})
+
+test_that("classify_integer_strings tiers by magnitude (bigint = auto)", {
+  # small (fits 32-bit) -> integer
+  expect_identical(classify_integer_strings(c("1", "2", "-3")), c(1L, 2L, -3L))
+  # mid (> 2^31, < 2^53) -> double, exact
+  mid <- c("3000000000", "5000000000")
+  out <- classify_integer_strings(mid)
+  expect_type(out, "double")
+  expect_identical(out, c(3e9, 5e9))
+  # large (>= 2^53) -> integer64
+  large <- c("9007199254740993", "720575940621039145")
+  out <- classify_integer_strings(large)
+  expect_s3_class(out, "integer64")
+  expect_identical(as.character(out), large)
+  # a single mid value in the column promotes the whole column past integer
+  expect_type(classify_integer_strings(c("1", "3000000000")), "double")
+  # NA and non-integer input
+  expect_identical(classify_integer_strings(c("1", NA)), c(1L, NA))
+  expect_null(classify_integer_strings(c("1", "x")))
+  expect_null(classify_integer_strings(c(NA_character_)))
+  expect_null(classify_integer_strings(NULL))
+})
+
+test_that("classify_integer_strings honours bigint = integer64", {
+  # every integer column -> integer64 regardless of magnitude
+  out <- classify_integer_strings(c("1", "2"), bigint = "integer64")
+  expect_s3_class(out, "integer64")
+  expect_identical(as.character(out), c("1", "2"))
+})
+
+test_that("classify_integer_strings honours bigint = character", {
+  # small still integer, large -> character (fread style)
+  expect_identical(classify_integer_strings(c("1", "2"), bigint = "character"),
+                   c(1L, 2L))
+  large <- c("9007199254740993", "720575940621039145")
+  expect_identical(classify_integer_strings(large, bigint = "character"), large)
+  # uint64 overflow -> character, and no warning in this mode
+  ov <- c("18446744073709551615", "1")
+  expect_silent(out <- classify_integer_strings(ov, bigint = "character"))
+  expect_identical(out, ov)
+})
+
+test_that("classify_integer_strings warns and returns character on uint64 overflow", {
+  ov <- c("18446744073709551615", "1")
+  expect_warning(out <- classify_integer_strings(ov, col = "seg_id"),
+                 "seg_id")
+  expect_identical(out, ov)
+  # integer64 mode cannot hold it either -> still character + warning
+  expect_warning(out2 <- classify_integer_strings(ov, bigint = "integer64"),
+                 "beyond the signed 64-bit range")
+  expect_identical(out2, ov)
 })
 
 test_that("is_posixct_list recognises a list of scalar POSIXct", {
