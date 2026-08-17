@@ -14,8 +14,11 @@
 #'
 #' @details The default in-memory path converts with reticulate and then patches
 #'   individual columns:
-#'   * `int64`/`uint64` columns are recovered as `bit64::integer64` so large ids
-#'     do not overflow to `NA`.
+#'   * Integer columns (`int64`, `uint64`, and `object` columns whose cells are
+#'     all Python ints) are classified by magnitude so each maps to the
+#'     narrowest faithful R type. This mirrors reticulate's own `py_to_r()`
+#'     where reticulate is faithful, and reserves `bit64::integer64` for values
+#'     base R cannot hold exactly -- see `bigint`.
 #'   * `object` columns whose cells are all scalar (or `NA`) are flattened from a
 #'     list of length-1 vectors to an atomic vector, with integer-valued cells
 #'     read as strings so arbitrary-precision Python ints round-trip. Genuine
@@ -23,7 +26,7 @@
 #'   * datetime columns are normalised to `POSIXct` in UTC.
 #'
 #'   The optional `use_arrow` path round-trips through a Feather file and needs
-#'   the Suggested `arrow` package.
+#'   the Suggested `arrow` package; `bigint` does not apply to it.
 #'
 #' @param x A pandas `DataFrame` (a reticulate `pandas.core.frame.DataFrame`).
 #' @param use_arrow If `TRUE`, convert via a temporary Feather file using the
@@ -31,6 +34,17 @@
 #' @param keep_index Whether to keep the pandas index as a column.
 #' @param tibble Whether to return a tibble rather than a base data frame.
 #'   Defaults to `use_arrow`.
+#' @param bigint How to represent integer columns. `"auto"` (the default) maps
+#'   each column to the narrowest faithful base R type: values fitting a 32-bit
+#'   R `integer` become `integer`, larger values below 2^53 become `double`
+#'   (exact), and values from 2^53 up to the signed 64-bit maximum become
+#'   `bit64::integer64` -- reserving `integer64` for what base R cannot hold
+#'   exactly. `"integer64"` returns every integer column as `bit64::integer64`
+#'   for a stable schema regardless of magnitude. `"character"` behaves like
+#'   `"auto"` but returns the large (>= 2^53) tier as character, as
+#'   `data.table::fread()` offers. `uint64` values beyond the signed 64-bit
+#'   range cannot be held by `integer64`; they are always returned as character,
+#'   with a warning unless `bigint = "character"`.
 #'
 #' @return An R `data.frame`, or a tibble when `tibble = TRUE`.
 #' @export
@@ -41,7 +55,9 @@
 #' pandas2df(df)
 #' }
 pandas2df <- function(x, use_arrow = FALSE, keep_index = FALSE,
-                      tibble = use_arrow) {
+                      tibble = use_arrow,
+                      bigint = c("auto", "integer64", "character")) {
+  bigint <- match.arg(bigint)
   use_arrow <- isTRUE(use_arrow)
   keep_index <- isTRUE(keep_index)
   tibble <- isTRUE(tibble)
@@ -52,7 +68,7 @@ pandas2df <- function(x, use_arrow = FALSE, keep_index = FALSE,
     x$reset_index(drop = !keep_index, inplace = TRUE)
   nr <- nrow(x)
   if (!use_arrow)
-    return(pandas2df_inmem(x, tibble = tibble))
+    return(pandas2df_inmem(x, tibble = tibble, bigint = bigint))
   check_suggested("arrow", "for the use_arrow = TRUE conversion path")
   if (nr == 0L) {
     check_suggested("tibble", "for the use_arrow = TRUE conversion path")
@@ -83,7 +99,7 @@ is_pandas_dataframe <- function(x) {
   identical(nm, "DataFrame")
 }
 
-pandas2df_inmem <- function(df, tibble = FALSE) {
+pandas2df_inmem <- function(df, tibble = FALSE, bigint = "auto") {
   if (!is_pandas_dataframe(df))
     stop("`df` must be a pandas DataFrame.", call. = FALSE)
   res <- pandas_py_to_r_frame(df)
@@ -98,9 +114,10 @@ pandas2df_inmem <- function(df, tibble = FALSE) {
   int_cols <- names(dtypes)[tolower(dtypes) %in% c("int64", "uint64")]
   for (col in intersect(int_cols, names(res))) {
     series <- reticulate::py_get_item(df, col)
-    i64 <- pandas_series_integer64(series, dtypes[[col]])
-    if (!is.null(i64))
-      res[[col]] <- i64
+    conv <- classify_integer_strings(pandas_series_character_values(series),
+                                     bigint = bigint, col = col)
+    if (!is.null(conv))
+      res[[col]] <- conv
   }
 
   # Object dtype: each cell can be an arbitrary Python object. reticulate's
@@ -130,7 +147,7 @@ pandas2df_inmem <- function(df, tibble = FALSE) {
     # would instead capture Python's list repr (e.g. "['AB']") as a literal
     # string, so leave genuine list-valued columns alone.
     if (pandas_series_has_list_cells(series)) next
-    flat <- pandas_object_series_to_vector(series)
+    flat <- pandas_object_series_to_vector(series, bigint = bigint, col = col)
     if (!is.null(flat))
       res[[col]] <- flat
   }
@@ -165,27 +182,58 @@ pandas_dataframe_dtypes <- function(df) {
   unlist(dtypes, use.names = TRUE)
 }
 
-pandas_series_integer64 <- function(series, dtype) {
-  vals <- pandas_series_character_values(series)
+# Classify a vector of exact integer strings (NA for missing) into the natural
+# R representation, honouring `bigint`. This is the single decision point shared
+# by the typed int64/uint64 path and the object-column path, so both dtypes and
+# both code paths behave identically.
+#
+#   "auto"       small -> integer, mid (< 2^53) -> double, large -> integer64
+#   "integer64"  every column -> integer64 (stable schema)
+#   "character"  as "auto" but the large (>= 2^53) tier -> character
+#
+# The tiering mirrors reticulate's py_to_r() where it is faithful (small ->
+# integer, mid -> double) and only reaches for bit64::integer64 once a value
+# exceeds 2^53, the largest integer a double represents exactly.
+#
+# uint64 values beyond the signed 64-bit maximum cannot be held by integer64
+# (which is signed); they are returned as character -- the only faithful option
+# -- and, outside "character" mode, warned about.
+#
+# Returns NULL when the caller should leave the column untouched: input is NULL,
+# all cells are missing, or the cells are not all integer-shaped.
+classify_integer_strings <- function(vals,
+                                     bigint = c("auto", "integer64",
+                                                "character"),
+                                     col = NULL) {
+  bigint <- match.arg(bigint)
   if (is.null(vals))
     return(NULL)
   present <- !is.na(vals)
-  if (!any(present)) {
-    if (dtype == "uint64")
-      return(bit64::as.integer64(vals))
+  if (!any(present))
     return(NULL)
-  }
-  if (dtype != "uint64" &&
-      all(abs(as.numeric(vals[present])) <= .Machine$integer.max))
-    return(NULL)
-  if (dtype == "uint64" &&
-      all(as.numeric(vals[present]) <= .Machine$integer.max))
-    return(bit64::as.integer64(vals))
   if (!all(grepl("^-?[0-9]+$", vals[present])))
     return(NULL)
-  if (any(int64_overflows(vals), na.rm = TRUE))
-    stop("int64 overflow! id cannot be represented as int64")
-  bit64::as.integer64(vals)
+
+  if (any(int64_overflows(vals), na.rm = TRUE)) {
+    if (!identical(bigint, "character"))
+      warning(sprintf(
+        paste0("%s holds integers beyond the signed 64-bit range; ",
+               "returning character. Pass bigint = \"character\" to silence."),
+        if (is.null(col)) "A column" else sprintf("Column '%s'", col)),
+        call. = FALSE)
+    return(vals)
+  }
+
+  i64 <- bit64::as.integer64(vals)
+  if (identical(bigint, "integer64"))
+    return(i64)
+
+  amax <- max(abs(i64), na.rm = TRUE)
+  if (amax >= bit64::as.integer64("9007199254740992"))   # 2^53
+    return(if (identical(bigint, "character")) vals else i64)
+  if (amax > .Machine$integer.max)                        # mid -> double
+    return(as.double(i64))
+  as.integer(i64)                                         # small -> integer
 }
 
 # Flatten a pandas Series of object dtype whose cells are all the same scalar
@@ -193,8 +241,10 @@ pandas_series_integer64 <- function(series, dtype) {
 # series.map(str).tolist() so arbitrary-precision Python ints round-trip
 # without int32 truncation (the bug that corrupts uint32 columns >= 2^31
 # returned by the L2 cache).
-pandas_object_series_to_vector <- function(series) {
-  classify_object_values(pandas_series_character_values(series))
+pandas_object_series_to_vector <- function(series, bigint = "auto",
+                                           col = NULL) {
+  classify_object_values(pandas_series_character_values(series),
+                         bigint = bigint, col = col)
 }
 
 # TRUE if any non-missing cell of this pandas object Series is itself a
@@ -216,20 +266,19 @@ pandas_series_has_list_cells <- local({
 # already mapped via str()), classify and convert to the natural atomic R
 # type. Returns NULL when the column can't be classified (mixed types) and
 # the caller should leave the list-column intact.
-classify_object_values <- function(vals) {
+classify_object_values <- function(vals, bigint = c("auto", "integer64",
+                                                    "character"),
+                                    col = NULL) {
+  bigint <- match.arg(bigint)
   if (is.null(vals)) return(NULL)
   present <- !is.na(vals)
   if (!any(present)) return(rep(NA, length(vals)))   # all-NA: caller's choice
 
-  # Integer-shaped strings -> numeric, or integer64 when beyond 2^53.
-  if (all(grepl("^-?[0-9]+$", vals[present]))) {
-    if (any(int64_overflows(vals), na.rm = TRUE)) return(NULL)
-    nums <- suppressWarnings(as.numeric(vals))
-    # 2^53 is the largest integer exactly representable as double; values >=
-    # 2^53 + 1 silently round when converted via as.numeric.
-    if (all(is.na(nums) | abs(nums) < 2^53)) return(nums)
-    return(bit64::as.integer64(vals))
-  }
+  # Integer-shaped strings share the magnitude-based classifier used by the
+  # typed int64/uint64 path, so an id column comes back the same type whether
+  # pandas declared it int64 or handed it to us as an object of Python ints.
+  if (all(grepl("^-?[0-9]+$", vals[present])))
+    return(classify_integer_strings(vals, bigint = bigint, col = col))
 
   # Float-shaped strings (incl. "nan", "inf", "-inf", scientific notation).
   # as.numeric returns NA for unparseable strings; require the parse to
