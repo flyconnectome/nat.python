@@ -1,0 +1,36 @@
+Package: nat.python
+Type: Package
+Title: Library-Agnostic Python Interoperability for R
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "Gregory",
+           family = "Jefferis",
+           role = c("aut", "cre"),
+           email = "jefferis@gmail.com",
+           comment = c(ORCID = "0000-0002-0587-9355"))
+Description: A small shared layer of library-agnostic Python interoperability
+    helpers built on 'reticulate'. Provides tools to introspect a Python
+    environment (which modules are installed and at what version), to convert
+    generic Python return values into idiomatic R (pandas 'DataFrame's to R
+    data frames, numpy 64-bit integer arrays to 'bit64' vectors, Python
+    datetimes to 'POSIXct'), and to bridge large integer identifiers between R,
+    numpy and raw bytes. It contains no knowledge of any specific Python
+    library or scientific domain; packages such as 'fafbseg', 'bancr' and
+    'seatabler' are expected to depend on it and supply that specificity
+    themselves.
+License: GPL-3
+Encoding: UTF-8
+Language: en-GB
+Imports:
+    reticulate,
+    bit64
+Suggests:
+    arrow,
+    tibble,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+URL: https://github.com/flyconnectome/nat.python
+BugReports: https://github.com/flyconnectome/nat.python/issues
+Config/roxygen2/version: 8.1.0

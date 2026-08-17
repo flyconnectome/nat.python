@@ -1,0 +1,8 @@
+^nat\.python-plan\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.git$
+^\.github$
+^LICENSE\.md$
+^\.claude$
+^CLAUDE\.md$
