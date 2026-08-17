@@ -45,7 +45,7 @@ pandas2df <- function(x, use_arrow = FALSE, keep_index = FALSE,
   use_arrow <- isTRUE(use_arrow)
   keep_index <- isTRUE(keep_index)
   tibble <- isTRUE(tibble)
-  if (!inherits(x, "pandas.core.frame.DataFrame"))
+  if (!is_pandas_dataframe(x))
     stop("`x` must be a pandas DataFrame (a ",
          "'pandas.core.frame.DataFrame').", call. = FALSE)
   if (keep_index || use_arrow || tibble)
@@ -69,8 +69,22 @@ pandas2df <- function(x, use_arrow = FALSE, keep_index = FALSE,
   arrow::read_feather(tf)
 }
 
+# Robust test that `x` is a pandas DataFrame. reticulate normally exposes the
+# full Python class path (pandas.core.frame.DataFrame), but that internal path
+# is not guaranteed stable across pandas versions or reticulate/Python combos,
+# so fall back to the Python type name.
+is_pandas_dataframe <- function(x) {
+  if (inherits(x, "pandas.core.frame.DataFrame")) return(TRUE)
+  if (!inherits(x, "python.builtin.object")) return(FALSE)
+  nm <- tryCatch(
+    reticulate::py_to_r(reticulate::py_get_attr(
+      reticulate::py_get_attr(x, "__class__"), "__name__")),
+    error = function(e) NA_character_)
+  identical(nm, "DataFrame")
+}
+
 pandas2df_inmem <- function(df, tibble = FALSE) {
-  if (!inherits(df, "pandas.core.frame.DataFrame"))
+  if (!is_pandas_dataframe(df))
     stop("`df` must be a pandas DataFrame.", call. = FALSE)
   res <- pandas_py_to_r_frame(df)
   if (tibble) {

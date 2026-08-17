@@ -21,9 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pin a stable Python: '3.x' resolves to the newest release (3.14 at time
+      # of writing), which the current reticulate does not fully support. 3.12
+      # matches the miniconda Python real users get via reticulate.
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.12'
 
       - name: Install numpy and pandas and point reticulate at this Python
         shell: bash

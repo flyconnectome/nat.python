@@ -56,7 +56,7 @@ test_that("pandas2df recovers 64-bit ids and object columns", {
            paste(ids, collapse = ", "), "], dtype='int64'), ",
            "'label': ['a', 'b']})"),
     convert = FALSE)
-  expect_true(inherits(df, "pandas.core.frame.DataFrame"))
+  expect_true(is_pandas_dataframe(df))
   out <- pandas2df(df)
   expect_s3_class(out, "data.frame")
   expect_s3_class(out$id, "integer64")
