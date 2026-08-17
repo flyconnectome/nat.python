@@ -46,13 +46,17 @@ test_that("pandas2df rejects a non-DataFrame", {
 
 test_that("pandas2df recovers 64-bit ids and object columns", {
   skip_if_no_module("pandas")
-  skip_if_no_module("numpy")
-  pd <- reticulate::import("pandas", convert = FALSE)
-  np <- reticulate::import("numpy", convert = FALSE)
   ids <- c("720575940621039145", "720575940626877799")
-  df <- pd$DataFrame(reticulate::dict(
-    id = np$array(ids, dtype = "int64"),
-    label = c("a", "b")))
+  # Build the frame entirely in Python (convert = FALSE, integer literals) so
+  # the test does not depend on numpy string casting, R double precision, or
+  # reticulate marshalling of large ids.
+  df <- reticulate::py_eval(
+    paste0("__import__('pandas').DataFrame({",
+           "'id': __import__('pandas').array([",
+           paste(ids, collapse = ", "), "], dtype='int64'), ",
+           "'label': ['a', 'b']})"),
+    convert = FALSE)
+  expect_true(inherits(df, "pandas.core.frame.DataFrame"))
   out <- pandas2df(df)
   expect_s3_class(out, "data.frame")
   expect_s3_class(out$id, "integer64")
