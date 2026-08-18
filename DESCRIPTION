@@ -26,7 +26,8 @@ Imports:
     reticulate,
     bit64,
     cli,
-    jsonlite
+    jsonlite,
+    memoise
 Suggests:
     arrow,
     tibble,

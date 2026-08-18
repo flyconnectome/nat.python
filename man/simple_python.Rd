@@ -43,8 +43,8 @@ installs no bundle, which is what you want when passing your own \code{pkgs}.
 remove an environment; they never delete anything themselves.
 
 After any installation the cached module versions
-(\code{\link[=forget_module_version]{forget_module_version()}}) are cleared so that subsequent version checks
-reflect the new environment.
+(\code{\link[=forget_module_version]{forget_module_version()}}) and the \code{\link[=check_module]{check_module()}} memoise cache are
+cleared so that subsequent checks reflect the new environment.
 }
 \examples{
 \dontrun{

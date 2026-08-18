@@ -31,8 +31,8 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #'   remove an environment; they never delete anything themselves.
 #'
 #'   After any installation the cached module versions
-#'   ([forget_module_version()]) are cleared so that subsequent version checks
-#'   reflect the new environment.
+#'   ([forget_module_version()]) and the [check_module()] memoise cache are
+#'   cleared so that subsequent checks reflect the new environment.
 #'
 #' @param pyinstall Which package bundle to install. One of `"basic"`, `"full"`,
 #'   `"extra"`, `"cleanenv"`, `"blast"` or `"none"`.
@@ -58,8 +58,12 @@ simple_python <- function(pyinstall = c("basic", "full", "extra", "cleanenv",
     reticulate::py_install(..., pip = TRUE,
                            pip_options = "--upgrade --prefer-binary")
 
-  # since we may well change installed modules, clear cached module versions
-  on.exit(forget_module_version())
+  # since we may well change installed modules, clear cached module versions and
+  # the check_module() memoise cache so later checks reflect the new environment
+  on.exit({
+    forget_module_version()
+    forget_check_module()
+  })
   pyinstall <- match.arg(pyinstall)
   if (pyinstall != "none")
     simple_python_base(pyinstall, miniconda)
