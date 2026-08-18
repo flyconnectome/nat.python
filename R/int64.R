@@ -107,8 +107,6 @@ pyids2bit64 <- function(x, as_character = TRUE) {
 #' rids2pyint(c("720575940621039145", "720575940626877799"))
 #' }
 rids2pyint <- function(x, numpyarray = FALSE, usefile = NA) {
-  if (!requireNamespace("reticulate", quietly = TRUE))
-    stop("Please install the 'reticulate' package.", call. = FALSE)
   np <- py_np(convert = FALSE)
   npa <- if (inherits(x, "np.ndarray")) x
   else if (!isTRUE(usefile) && (length(x) < 1e4 || isFALSE(usefile))) {
