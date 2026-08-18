@@ -1,6 +1,6 @@
 Package: nat.python
 Type: Package
-Title: Library-Agnostic Python Interoperability for R
+Title: Python Interoperability and Environment Management for the 'natverse'
 Version: 0.0.0.9000
 Authors@R:
     person(given = "Gregory",
@@ -8,22 +8,26 @@ Authors@R:
            role = c("aut", "cre"),
            email = "jefferis@gmail.com",
            comment = c(ORCID = "0000-0002-0587-9355"))
-Description: A small shared layer of library-agnostic Python interoperability
-    helpers built on 'reticulate'. Provides tools to introspect a Python
-    environment (which modules are installed and at what version), to convert
-    generic Python return values into idiomatic R (pandas 'DataFrame's to R
-    data frames, numpy 64-bit integer arrays to 'bit64' vectors, Python
+Description: A small shared layer of Python interoperability helpers built on
+    'reticulate' for the 'natverse' ecosystem. Provides tools to introspect a
+    Python environment (which modules are installed and at what version), to
+    convert generic Python return values into idiomatic R (pandas 'DataFrame's
+    to R data frames, numpy 64-bit integer arrays to 'bit64' vectors, Python
     datetimes to 'POSIXct'), and to bridge large integer identifiers between R,
-    numpy and raw bytes. It contains no knowledge of any specific Python
-    library or scientific domain; packages such as 'fafbseg', 'bancr' and
-    'seatabler' are expected to depend on it and supply that specificity
-    themselves.
+    numpy and raw bytes. It also provisions and manages a shared 'miniconda'
+    Python environment, with opinionated defaults for the packages that natverse
+    tools expect (such as 'cloud-volume', 'CAVEclient' and 'navis'). Packages
+    such as 'fafbseg', 'bancr' and 'seatabler' depend on it for both this
+    interoperability and a single, consistent way to set Python up.
 License: GPL-3
 Encoding: UTF-8
 Language: en-GB
 Imports:
     reticulate,
-    bit64
+    bit64,
+    cli,
+    jsonlite,
+    memoise
 Suggests:
     arrow,
     tibble,
