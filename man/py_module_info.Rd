@@ -2,40 +2,33 @@
 % Please edit documentation in R/modules.R
 \name{py_module_info}
 \alias{py_module_info}
-\alias{py_module_info2}
 \title{Report on installed Python modules}
 \usage{
 py_module_info(modules)
-
-py_module_info2(modules)
 }
 \arguments{
 \item{modules}{Character vector of Python module (import) names.}
 }
 \value{
-A data frame with one row per unique module. \code{py_module_info()} has
-columns \code{module}, \code{available}, \code{version}, \code{path}; \code{py_module_info2()} has
-\code{module}, \code{available}, \code{version}. Returns \code{NULL} if reticulate is not
-installed.
+A data frame with one row per unique module and columns \code{module},
+\code{available}, \code{version}.
 }
 \description{
-\code{py_module_info()} imports each module and reads its version and
-filesystem path. \code{py_module_info2()} answers the same "is it installed and
-what version" question \emph{without} importing the modules, by reading Python
-distribution metadata — much cheaper, and safe for heavy modules, at the
-cost of no path column.
+Reports which of the named Python modules are installed and at
+what version \emph{without importing} them — cheap, and safe for modules with
+heavy or side-effecting imports.
 }
 \details{
-\code{py_module_info()} imports each module (so a module with import side
-effects will run them) and is the only variant that can report the on-disk
-\code{path}. \code{py_module_info2()} uses \code{importlib.metadata} (or the
+Reads Python distribution metadata via \code{importlib.metadata} (or the
 \code{importlib_metadata} backport) together with \code{packages_distributions()} to
-map top-level import names onto installed distributions, so it never imports
-the target module.
+map top-level import names onto installed distributions, so the target
+modules are never imported. Modules installed without standard distribution
+metadata (namespace packages, some editable installs) can therefore report
+as unavailable here even when they are importable; \code{\link[=module_version]{module_version()}} falls
+back to importing in that case.
 }
 \examples{
 \dontrun{
 py_module_info(c("numpy", "pandas"))
-py_module_info2(c("numpy", "pandas"))   # without importing them
 }
 }

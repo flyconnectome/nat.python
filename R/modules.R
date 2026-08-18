@@ -2,72 +2,33 @@
 #
 # Discover which modules are installed in the active Python environment and at
 # what version, without importing heavy modules just to find out. Ported from
-# fafbseg's py_module_info / py_module_info2 / module_version / python_module_path
-# (see nat.python-plan.md §3b). py_report is deliberately deferred to Phase 2,
-# because it depends on the environment engine (check_reticulate /
-# ownpythonrequested) and carries a consumer-curated package list.
+# fafbseg's py_module_info / module_version (see nat.python-plan.md §3b), but
+# using the metadata (no-import) approach as the single introspector.
 
 #' Report on installed Python modules
 #'
-#' @description `py_module_info()` imports each module and reads its version and
-#'   filesystem path. `py_module_info2()` answers the same "is it installed and
-#'   what version" question *without* importing the modules, by reading Python
-#'   distribution metadata — much cheaper, and safe for heavy modules, at the
-#'   cost of no path column.
+#' @description Reports which of the named Python modules are installed and at
+#'   what version *without importing* them — cheap, and safe for modules with
+#'   heavy or side-effecting imports.
 #'
-#' @details `py_module_info()` imports each module (so a module with import side
-#'   effects will run them) and is the only variant that can report the on-disk
-#'   `path`. `py_module_info2()` uses `importlib.metadata` (or the
+#' @details Reads Python distribution metadata via `importlib.metadata` (or the
 #'   `importlib_metadata` backport) together with `packages_distributions()` to
-#'   map top-level import names onto installed distributions, so it never imports
-#'   the target module.
+#'   map top-level import names onto installed distributions, so the target
+#'   modules are never imported. Modules installed without standard distribution
+#'   metadata (namespace packages, some editable installs) can therefore report
+#'   as unavailable here even when they are importable; [module_version()] falls
+#'   back to importing in that case.
 #'
 #' @param modules Character vector of Python module (import) names.
 #'
-#' @return A data frame with one row per unique module. `py_module_info()` has
-#'   columns `module`, `available`, `version`, `path`; `py_module_info2()` has
-#'   `module`, `available`, `version`. Returns `NULL` if reticulate is not
-#'   installed.
+#' @return A data frame with one row per unique module and columns `module`,
+#'   `available`, `version`.
 #' @export
 #' @examples
 #' \dontrun{
 #' py_module_info(c("numpy", "pandas"))
-#' py_module_info2(c("numpy", "pandas"))   # without importing them
 #' }
 py_module_info <- function(modules) {
-  if (!requireNamespace("reticulate", quietly = TRUE))
-    return(NULL)
-  modules <- unique(modules)
-  paths <- character(length(modules))
-  names(paths) <- modules
-  versions <- character(length(modules))
-  names(versions) <- modules
-  available <- logical(length(modules))
-  names(available) <- modules
-
-  for (m in modules) {
-    mod <- tryCatch(reticulate::import(m), error = function(e) NULL)
-    available[m] <- !is.null(mod)
-    if (!available[m])
-      next
-    paths[m] <- python_module_path(mod)
-    versions[m] <- tryCatch(mod$`__version__`, error = function(e) "")
-  }
-  df <- data.frame(module = modules,
-                   available = available,
-                   version = versions,
-                   path = paths,
-                   stringsAsFactors = FALSE)
-  row.names(df) <- NULL
-  df
-}
-
-#' @rdname py_module_info
-#' @export
-py_module_info2 <- function(modules) {
-  if (!requireNamespace("reticulate", quietly = TRUE))
-    return(NULL)
-
   im <- tryCatch(
     reticulate::import("importlib.metadata", convert = FALSE),
     error = function(e)
@@ -136,11 +97,24 @@ module_version <- function(module) {
   if (!is.null(cached))
     return(cached)
   pmi <- try(py_module_info(module), silent = TRUE)
-  v <- if (inherits(pmi, "try-error") || is.null(pmi) || nrow(pmi) < 1L)
-    NA_character_
-  else if (nzchar(pmi$version)) pmi$version else NA_character_
+  v <- if (!inherits(pmi, "try-error") && !is.null(pmi) && nrow(pmi) >= 1L &&
+           nzchar(pmi$version))
+    pmi$version
+  else
+    # metadata gave nothing (namespace/editable install, or importlib.metadata
+    # unavailable): fall back to importing and reading __version__.
+    module_version_by_import(module)
   .nat_python_cache[[key]] <- v
   v
+}
+
+# Import a module and read its __version__, for the cases where distribution
+# metadata does not yield a version. Returns NA if it can't be imported.
+module_version_by_import <- function(module) {
+  mod <- tryCatch(reticulate::import(module), error = function(e) NULL)
+  if (is.null(mod)) return(NA_character_)
+  v <- tryCatch(mod$`__version__`, error = function(e) "")
+  if (isTRUE(nzchar(v))) v else NA_character_
 }
 
 #' @description `forget_module_version()` clears the [module_version()] cache.
@@ -186,18 +160,4 @@ module_available <- function(module, action = c("none", "warning", "stop"),
         call. = FALSE)
   }
   if (action == "none") available else invisible(available)
-}
-
-# Extract a module's filesystem path, coping with namespace packages whose
-# __path__ is a _NamespacePath repr rather than a plain character vector.
-python_module_path <- function(mod) {
-  tryCatch({
-    path <- mod$`__path__`
-    if (!is.character(path)) {
-      # e.g. "_NamespacePath(['/Users/paulbrooks/igneous', ''])"
-      path <- as.character(path)
-      path2 <- sub(".+?\\[(.+)\\].+?", "\\1", path)
-      scan(what = "", sep = ",", text = path2, quiet = TRUE)
-    } else path
-  }, error = function(e) "")
 }
