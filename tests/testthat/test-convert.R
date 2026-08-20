@@ -118,3 +118,26 @@ test_that("pandas2df recovers 64-bit ids and object columns", {
   expect_identical(as.character(out$id), ids)
   expect_identical(out$label, c("a", "b"))
 })
+
+test_that("pandas2df fast-path preserves column order and nullable ids", {
+  skip_if_no_module("pandas")
+  ids <- c("720575940621039145", "720575940626877799")
+  # A nullable Int64 id column sandwiched between object columns, with a NA in
+  # the id column: exercises the fast path (which pulls id out of the py_to_r
+  # pass) and its splice back into the original position.
+  df <- reticulate::py_eval(
+    paste0("__import__('pandas').DataFrame({",
+           "'label': ['a', 'b', 'c'], ",
+           "'id': __import__('pandas').array([",
+           paste(ids, collapse = ", "), ", None], dtype='Int64'), ",
+           "'n': __import__('pandas').array([1, 2, 3], dtype='Int64')})"),
+    convert = FALSE)
+  out <- pandas2df(df)
+  # id stays the 2nd column (fast path spliced back in place)
+  expect_identical(names(out), c("label", "id", "n"))
+  expect_s3_class(out$id, "integer64")
+  expect_identical(as.character(out$id), c(ids, NA))
+  # a small-valued Int64 column comes back as a plain integer, NA preserved
+  expect_identical(out$n, c(1L, 2L, 3L))
+  expect_identical(out$label, c("a", "b", "c"))
+})
