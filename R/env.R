@@ -23,10 +23,12 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #'   miniconda install and `r-reticulate` conda environment are created/updated,
 #'   independent of any system Python. The `pyinstall` bundles install a curated
 #'   set of packages used across the FlyWire/connectomics ecosystem:
-#'   `"basic"` adds cloud-volume, seatable_api and CAVEclient; `"full"` adds
-#'   navis + fafbseg; `"extra"` additionally installs skeletonisation tooling
-#'   (skeletor, meshparty and friends). `"none"` provisions the environment but
-#'   installs no bundle, which is what you want when passing your own `pkgs`.
+#'   `"minimal"` installs just pandas -- nat.python's own baseline, needed by
+#'   [pandas2df()], with numpy coming in as its dependency; `"basic"` adds
+#'   cloud-volume, seatable_api and CAVEclient on top; `"full"` adds navis +
+#'   fafbseg; `"extra"` additionally installs skeletonisation tooling (skeletor,
+#'   meshparty and friends). `"none"` provisions the environment but installs
+#'   no bundle, which is what you want when passing your own `pkgs`.
 #'   `"cleanenv"` and `"blast"` only print the (destructive) commands needed to
 #'   remove an environment; they never delete anything themselves.
 #'
@@ -35,7 +37,7 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #'   cleared so that subsequent checks reflect the new environment.
 #'
 #' @param pyinstall Which package bundle to install. One of `"basic"`, `"full"`,
-#'   `"extra"`, `"cleanenv"`, `"blast"` or `"none"`.
+#'   `"extra"`, `"minimal"`, `"cleanenv"`, `"blast"` or `"none"`.
 #' @param pkgs Optional character vector of additional Python packages (pip
 #'   specifications) to install into the environment.
 #' @param miniconda Whether to use the managed miniconda environment (strongly
@@ -45,11 +47,13 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #' @export
 #' @examples
 #' \dontrun{
-#' simple_python("basic")                       # the common case
-#' simple_python("none", pkgs = "seatable_api") # just one package
+#' simple_python("basic")                          # the common case
+#' simple_python("minimal")                        # just pandas (+ numpy)
+#' simple_python("minimal", pkgs = "seatable_api") # pandas baseline + one pkg
+#' simple_python("none", pkgs = "seatable_api")    # just one package
 #' }
-simple_python <- function(pyinstall = c("basic", "full", "extra", "cleanenv",
-                                        "blast", "none"),
+simple_python <- function(pyinstall = c("basic", "full", "extra", "minimal",
+                                        "cleanenv", "blast", "none"),
                           pkgs = NULL, miniconda = TRUE) {
 
   check_reticulate(check_python = FALSE)
@@ -69,6 +73,12 @@ simple_python <- function(pyinstall = c("basic", "full", "extra", "cleanenv",
     simple_python_base(pyinstall, miniconda)
   if (pyinstall %in% c("cleanenv", "blast")) return(invisible(NULL))
 
+  if (pyinstall %in% c("minimal", "basic", "full", "extra")) {
+    # nat.python's own baseline: pandas2df() needs pandas, and numpy rides in
+    # with it. Every richer bundle builds on top of this.
+    cli::cli_inform("Installing pandas (brings numpy)")
+    ourpip("pandas")
+  }
   if (pyinstall %in% c("basic", "full", "extra")) {
     cli::cli_inform("Installing cloudvolume")
     ourpip("cloud-volume")

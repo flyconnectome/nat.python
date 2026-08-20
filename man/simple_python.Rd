@@ -5,14 +5,14 @@
 \title{Install a managed Python environment for R}
 \usage{
 simple_python(
-  pyinstall = c("basic", "full", "extra", "cleanenv", "blast", "none"),
+  pyinstall = c("basic", "full", "extra", "minimal", "cleanenv", "blast", "none"),
   pkgs = NULL,
   miniconda = TRUE
 )
 }
 \arguments{
 \item{pyinstall}{Which package bundle to install. One of \code{"basic"}, \code{"full"},
-\code{"extra"}, \code{"cleanenv"}, \code{"blast"} or \code{"none"}.}
+\code{"extra"}, \code{"minimal"}, \code{"cleanenv"}, \code{"blast"} or \code{"none"}.}
 
 \item{pkgs}{Optional character vector of additional Python packages (pip
 specifications) to install into the environment.}
@@ -35,10 +35,12 @@ With \code{miniconda = TRUE} (the default and recommendation) a private
 miniconda install and \code{r-reticulate} conda environment are created/updated,
 independent of any system Python. The \code{pyinstall} bundles install a curated
 set of packages used across the FlyWire/connectomics ecosystem:
-\code{"basic"} adds cloud-volume, seatable_api and CAVEclient; \code{"full"} adds
-navis + fafbseg; \code{"extra"} additionally installs skeletonisation tooling
-(skeletor, meshparty and friends). \code{"none"} provisions the environment but
-installs no bundle, which is what you want when passing your own \code{pkgs}.
+\code{"minimal"} installs just pandas -- nat.python's own baseline, needed by
+\code{\link[=pandas2df]{pandas2df()}}, with numpy coming in as its dependency; \code{"basic"} adds
+cloud-volume, seatable_api and CAVEclient on top; \code{"full"} adds navis +
+fafbseg; \code{"extra"} additionally installs skeletonisation tooling (skeletor,
+meshparty and friends). \code{"none"} provisions the environment but installs
+no bundle, which is what you want when passing your own \code{pkgs}.
 \code{"cleanenv"} and \code{"blast"} only print the (destructive) commands needed to
 remove an environment; they never delete anything themselves.
 
@@ -48,7 +50,9 @@ cleared so that subsequent checks reflect the new environment.
 }
 \examples{
 \dontrun{
-simple_python("basic")                       # the common case
-simple_python("none", pkgs = "seatable_api") # just one package
+simple_python("basic")                          # the common case
+simple_python("minimal")                        # just pandas (+ numpy)
+simple_python("minimal", pkgs = "seatable_api") # pandas baseline + one pkg
+simple_python("none", pkgs = "seatable_api")    # just one package
 }
 }
