@@ -1,0 +1,143 @@
+# nat.python
+
+> **⚠️ Design-phase package.** nat.python is being extracted from
+> [fafbseg](https://github.com/natverse/fafbseg) and is **not yet ready
+> for general use**. The API is unstable and may change without notice.
+> See
+> [`nat.python-plan.md`](https://flyconnectome.github.io/nat.python/nat.python-plan.md)
+> for the full design, scope and migration plan.
+
+nat.python is a small shared layer of **library-agnostic** Python
+interoperability helpers built on
+[reticulate](https://rstudio.github.io/reticulate/). It holds only the
+code that does not care *which* Python library you are talking to:
+
+- **introspection** — which modules are installed and at what version
+  ([`py_module_info()`](https://flyconnectome.github.io/nat.python/reference/py_module_info.md),
+  `py_module_info2()`,
+  [`module_version()`](https://flyconnectome.github.io/nat.python/reference/module_version.md),
+  [`module_available()`](https://flyconnectome.github.io/nat.python/reference/module_available.md));
+- **conversion** — turn generic Python return values into idiomatic R:
+  [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
+  (pandas `DataFrame` → R data frame, preserving 64-bit ids, object
+  columns and datetimes),
+  [`ts2pydatetime()`](https://flyconnectome.github.io/nat.python/reference/ts2pydatetime.md),
+  [`null2na()`](https://flyconnectome.github.io/nat.python/reference/null2na.md);
+- **id bridging** — 64-bit integer ids between R (`bit64`), numpy and
+  raw bytes
+  ([`pyids2bit64()`](https://flyconnectome.github.io/nat.python/reference/pyids2bit64.md),
+  [`rids2pyint()`](https://flyconnectome.github.io/nat.python/reference/rids2pyint.md),
+  [`rids2raw()`](https://flyconnectome.github.io/nat.python/reference/rids2raw.md),
+  [`int64_overflows()`](https://flyconnectome.github.io/nat.python/reference/int64_overflows.md)).
+
+It contains **no knowledge of any specific Python package**
+(`cloudvolume`, `caveclient`, `seatable_api`, `navis`, …) or scientific
+domain. Packages such as [fafbseg](https://github.com/natverse/fafbseg),
+[bancr](https://github.com/flyconnectome/bancr) and
+[seatabler](https://github.com/flyconnectome/seatabler) depend on
+nat.python and supply that specificity themselves.
+
+The name follows the `nat*` family (`nat`, `nat.utils`, `nat.nblast`) —
+read it as “nat + Python interop”. It is unrelated to the PyPI package
+`natpy`.
+
+## Status
+
+This repository currently implements **Phase 1** of the plan: the module
+introspection, pandas/numpy → R conversion, and large-integer bridging
+code, lifted out of fafbseg. The Python *environment engine* (the
+mechanics under `simple_python`) and the diagnostic `py_report()` are
+**Phase 2** and not yet here. See
+[`nat.python-plan.md`](https://flyconnectome.github.io/nat.python/nat.python-plan.md).
+
+## Installation
+
+``` r
+
+# install.packages("remotes")
+remotes::install_github("flyconnectome/nat.python")
+```
+
+nat.python does not manage Python environments itself (yet — see the
+plan). It uses whatever interpreter reticulate resolves. The conversion
+functions need `numpy` and `pandas` in that environment; the
+`use_arrow = TRUE` path additionally needs the R `arrow` package.
+
+## Usage
+
+``` r
+
+library(nat.python)
+
+# What is installed?
+module_version("pandas")
+py_module_info(c("numpy", "pandas"))
+
+# Convert a pandas DataFrame, keeping 64-bit ids exact
+pd <- reticulate::import("pandas")
+df <- pd$DataFrame(list(id = c("720575940621039145", "720575940626877799")))
+pandas2df(df)
+```
+
+## License
+
+GPL-3
+
+# Package index
+
+## Package
+
+- [`nat.python`](https://flyconnectome.github.io/nat.python/reference/nat.python-package.md)
+  [`nat.python-package`](https://flyconnectome.github.io/nat.python/reference/nat.python-package.md)
+  : nat.python: library-agnostic Python interoperability for R
+
+## Python environment provisioning
+
+Set up and check a managed Python for use from R via reticulate.
+
+- [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
+  : Install a managed Python environment for R
+- [`check_reticulate()`](https://flyconnectome.github.io/nat.python/reference/check_reticulate.md)
+  : Check that a working Python is available via reticulate
+
+## Module management
+
+Check, load and introspect Python modules, installing on demand.
+
+- [`check_module()`](https://flyconnectome.github.io/nat.python/reference/check_module.md)
+  : Ensure a Python module is installed and importable
+- [`module_available()`](https://flyconnectome.github.io/nat.python/reference/module_available.md)
+  : Check whether a Python module is available
+- [`module_version()`](https://flyconnectome.github.io/nat.python/reference/module_version.md)
+  [`forget_module_version()`](https://flyconnectome.github.io/nat.python/reference/module_version.md)
+  : The installed version of a Python module
+- [`py_module_info()`](https://flyconnectome.github.io/nat.python/reference/py_module_info.md)
+  : Report on installed Python modules
+
+## pandas and data conversion
+
+Convert pandas DataFrames to R, recovering 64-bit ids and datetimes.
+
+- [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
+  : Convert a pandas DataFrame to an R data frame
+- [`null2na()`](https://flyconnectome.github.io/nat.python/reference/null2na.md)
+  : Replace NULL elements of a list with NA
+
+## 64-bit id marshalling
+
+Round-trip large integer ids between R (bit64) and Python without loss.
+
+- [`pyids2bit64()`](https://flyconnectome.github.io/nat.python/reference/pyids2bit64.md)
+  : Convert a numpy 64-bit integer array to R
+- [`rids2pyint()`](https://flyconnectome.github.io/nat.python/reference/rids2pyint.md)
+  : Convert R ids to Python 64-bit integers
+- [`rids2raw()`](https://flyconnectome.github.io/nat.python/reference/rids2raw.md)
+  : Convert 64-bit integer ids to raw bytes
+- [`int64_overflows()`](https://flyconnectome.github.io/nat.python/reference/int64_overflows.md)
+  : Detect character input that would overflow signed 64-bit integers
+
+## Datetime
+
+- [`ts2pydatetime()`](https://flyconnectome.github.io/nat.python/reference/ts2pydatetime.md)
+  : Convert an R time to a Python datetime
+
