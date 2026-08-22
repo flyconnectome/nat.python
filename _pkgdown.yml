@@ -1,0 +1,41 @@
+url: https://flyconnectome.github.io/nat.python/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Package
+  contents:
+  - nat.python-package
+
+- title: Python environment provisioning
+  desc: Set up and check a managed Python for use from R via reticulate.
+  contents:
+  - simple_python
+  - check_reticulate
+
+- title: Module management
+  desc: Check, load and introspect Python modules, installing on demand.
+  contents:
+  - check_module
+  - module_available
+  - module_version
+  - py_module_info
+
+- title: pandas and data conversion
+  desc: Convert pandas DataFrames to R, recovering 64-bit ids and datetimes.
+  contents:
+  - pandas2df
+  - null2na
+
+- title: 64-bit id marshalling
+  desc: Round-trip large integer ids between R (bit64) and Python without loss.
+  contents:
+  - pyids2bit64
+  - rids2pyint
+  - rids2raw
+  - int64_overflows
+
+- title: Datetime
+  contents:
+  - ts2pydatetime
