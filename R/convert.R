@@ -102,22 +102,53 @@ is_pandas_dataframe <- function(x) {
 pandas2df_inmem <- function(df, tibble = FALSE, bigint = "auto") {
   if (!is_pandas_dataframe(df))
     stop("`df` must be a pandas DataFrame.", call. = FALSE)
-  res <- pandas_py_to_r_frame(df)
+  dtypes <- pandas_dataframe_dtypes(df)
+  # Row count from the *original* frame: once the fast path filters columns out
+  # of df_slow, an all-fast frame yields a 0-column res whose nrow() would read
+  # as 0 even with rows present, so the empty check cannot rely on nrow(res).
+  nr <- nrow(df)
+
+  # Fast-path 64-bit integer id columns: convert them ourselves and keep them
+  # out of the reticulate py_to_r pass below. reticulate converts pandas
+  # *nullable* integer extension columns (dtype "Int64"/"UInt64") cell by cell,
+  # which is pathologically slow on the large id columns that dominate synapse /
+  # partner queries (~20x the whole conversion). classify_integer_strings() is
+  # the same conversion the int64 rescue used to redo *after* the slow pass, so
+  # we run it first and filter those columns out of the frame handed to py_to_r.
+  # Columns the fast path declines (returns NULL -- an all-NA column) stay in
+  # the py_to_r pass and keep their native R type.
+  int_cols <- names(dtypes)[tolower(dtypes) %in% c("int64", "uint64")]
+  fast_int <- list()
+  for (col in int_cols) {
+    conv <- classify_integer_strings(
+      pandas_series_character_values(reticulate::py_get_item(df, col)),
+      bigint = bigint, col = col)
+    if (!is.null(conv))
+      fast_int[[col]] <- conv
+  }
+
+  df_slow <- if (length(fast_int))
+    reticulate::py_call(
+      df$filter,
+      items = as.list(setdiff(names(dtypes), names(fast_int))))
+  else df
+  res <- pandas_py_to_r_frame(df_slow)
   if (tibble) {
     check_suggested("tibble", "for tibble = TRUE")
     res <- tibble::as_tibble(res)
   }
-  if (nrow(res) == 0L)
-    return(res)
 
-  dtypes <- pandas_dataframe_dtypes(df)
-  int_cols <- names(dtypes)[tolower(dtypes) %in% c("int64", "uint64")]
-  for (col in intersect(int_cols, names(res))) {
-    series <- reticulate::py_get_item(df, col)
-    conv <- classify_integer_strings(pandas_series_character_values(series),
-                                     bigint = bigint, col = col)
-    if (!is.null(conv))
-      res[[col]] <- conv
+  # splice the fast-converted int columns back into their original positions
+  splice_fast_int <- function(res) {
+    for (col in names(fast_int)) res[[col]] <- fast_int[[col]]
+    if (length(fast_int)) res <- res[names(dtypes)]
+    res
+  }
+
+  if (nr == 0L) {
+    res <- splice_fast_int(res)
+    attr(res, "pandas.index") <- NULL
+    return(res)
   }
 
   # Object dtype: each cell can be an arbitrary Python object. reticulate's
@@ -157,6 +188,8 @@ pandas2df_inmem <- function(df, tibble = FALSE, bigint = "auto") {
   for (col in intersect(unique(c(datetime_cols, posix_list_cols)), names(res))) {
     res[[col]] <- normalise_posixct_utc(flatten_posixct_list(res[[col]]))
   }
+
+  res <- splice_fast_int(res)
   attr(res, "pandas.index") <- NULL
   res
 }
