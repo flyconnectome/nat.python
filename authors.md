@@ -8,7 +8,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/flyconnectome/nat.python/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/flyconnectome/nat.python/blob/v0.2.0/DESCRIPTION)
 
 Jefferis G (2026). *nat.python: Python Interoperability and Environment
 Management for the 'natverse'*. R package version 0.2.0,
