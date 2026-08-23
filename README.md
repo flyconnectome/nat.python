@@ -3,6 +3,7 @@
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![R-CMD-check](https://github.com/flyconnectome/nat.python/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/flyconnectome/nat.python/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/flyconnectome/nat.python/graph/badge.svg)](https://app.codecov.io/gh/flyconnectome/nat.python)
 <!-- badges: end -->
 
 > **⚠️ Design-phase package.** nat.python is being extracted from
