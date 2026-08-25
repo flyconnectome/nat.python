@@ -5,9 +5,8 @@
   dtype (PDEP-14): string columns become R character vectors and other Arrow
   columns (e.g. `int64[pyarrow]` ids) map to the same R types as their
   native-dtype equivalents (#6).
-* `simple_python()` pins the baseline install to `pandas < 3` for now. Although
-  `pandas2df()` handles pandas 3.0, the pin is retained as a caution while the
-  wider ecosystem settles on pandas 3; lift it (back to `pandas`) once ready.
+* `simple_python()` installs current pandas (3.x supported), no longer pinned to
+  `pandas < 3`, now that `pandas2df()` handles the Arrow-backed string dtype.
 * CI now provisions Python through `simple_python()` itself (the end-user path),
   rather than a bespoke `reticulate::py_install()` call.
 
