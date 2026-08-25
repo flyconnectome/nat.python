@@ -76,8 +76,13 @@ simple_python <- function(pyinstall = c("basic", "full", "extra", "minimal",
   if (pyinstall %in% c("minimal", "basic", "full", "extra")) {
     # nat.python's own baseline: pandas2df() needs pandas, and numpy rides in
     # with it. Every richer bundle builds on top of this.
-    cli::cli_inform("Installing pandas (brings numpy)")
-    ourpip("pandas")
+    #
+    # Pinned to pandas < 3 for now: pandas 3.0 makes Arrow-backed strings the
+    # default dtype (PDEP-14), which pandas2df() does not yet convert back to R
+    # (string columns return as raw ArrowStringArray objects). Lift this once
+    # pandas2df() handles the Arrow string dtype.
+    cli::cli_inform("Installing pandas (<3 for now; brings numpy)")
+    ourpip("pandas<3")
   }
   if (pyinstall %in% c("basic", "full", "extra")) {
     cli::cli_inform("Installing cloudvolume")
