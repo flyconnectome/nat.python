@@ -1,3 +1,12 @@
+# nat.python 0.2.0.9000 (development version)
+
+* `simple_python()` now pins the baseline install to `pandas < 3`. pandas 3.0
+  makes Arrow-backed strings the default dtype, which `pandas2df()` does not yet
+  convert back to R; the pin keeps the provisioned environment functional until
+  that support lands (#6).
+* CI now provisions Python through `simple_python()` itself (the end-user path),
+  rather than a bespoke `reticulate::py_install()` call.
+
 # nat.python 0.2.0
 
 First tagged release. A small shared layer of Python interoperability and
