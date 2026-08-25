@@ -119,6 +119,63 @@ test_that("pandas2df recovers 64-bit ids and object columns", {
   expect_identical(out$label, c("a", "b"))
 })
 
+test_that("pandas2df flattens object columns and normalises datetimes", {
+  skip_if_no_module("pandas")
+  # An object column of python ints (flattened to an atomic vector), a genuine
+  # list-valued object column (a multi-select, left as a list), an all-None
+  # object column (-> NA), and a datetime column (-> UTC POSIXct).
+  df <- reticulate::py_eval(
+    paste0("__import__('pandas').DataFrame({",
+           "'n': __import__('pandas').Series([1, 2, 3], dtype=object), ",
+           "'tags': __import__('pandas').Series([['AB'], ['CD'], []], dtype=object), ",
+           "'blank': __import__('pandas').Series([None, None, None], dtype=object), ",
+           "'when': __import__('pandas').to_datetime(",
+           "['2020-01-01', '2020-01-02', '2020-01-03'])})"),
+    convert = FALSE)
+  out <- pandas2df(df)
+  # object ints flattened to a plain atomic vector, not a list of length-1s
+  expect_false(is.list(out$n))
+  expect_identical(out$n, c(1L, 2L, 3L))
+  # a genuine list-valued (multi-select) column is left intact as a list
+  expect_true(is.list(out$tags))
+  expect_identical(out$tags[[1]], "AB")
+  expect_length(out$tags[[3]], 0L)
+  # an all-None object column collapses to NA
+  expect_true(all(is.na(out$blank)))
+  # datetimes come back as UTC POSIXct
+  expect_s3_class(out$when, "POSIXct")
+  expect_identical(attr(out$when, "tzone"), "UTC")
+  expect_identical(as.character(as.Date(out$when)),
+                   c("2020-01-01", "2020-01-02", "2020-01-03"))
+})
+
+test_that("pandas2df use_arrow path round-trips via a feather file", {
+  skip_if_no_module("pandas")
+  skip_if_no_module("pyarrow")          # pandas.to_feather needs pyarrow
+  skip_if_not_installed("arrow")        # R arrow::read_feather
+  df <- reticulate::py_eval(
+    "__import__('pandas').DataFrame({'label': ['a', 'b', 'c'], 'n': [1, 2, 3]})",
+    convert = FALSE)
+  out <- pandas2df(df, use_arrow = TRUE)
+  # the arrow path always returns a tibble
+  expect_s3_class(out, "tbl_df")
+  expect_identical(out$label, c("a", "b", "c"))
+  expect_equal(as.integer(out$n), 1:3)
+})
+
+test_that("pandas2df use_arrow handles an empty frame", {
+  skip_if_no_module("pandas")
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("tibble")
+  # the empty-frame branch returns via py_to_r + tibble, without touching arrow
+  df <- reticulate::py_eval(
+    "__import__('pandas').DataFrame({'label': [], 'n': []})", convert = FALSE)
+  out <- pandas2df(df, use_arrow = TRUE)
+  expect_s3_class(out, "tbl_df")
+  expect_identical(nrow(out), 0L)
+  expect_identical(names(out), c("label", "n"))
+})
+
 test_that("pandas2df fast-path preserves column order and nullable ids", {
   skip_if_no_module("pandas")
   ids <- c("720575940621039145", "720575940626877799")

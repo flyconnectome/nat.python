@@ -37,7 +37,8 @@ jobs:
         shell: Rscript {0}
         run: |
           reticulate::install_miniconda()
-          reticulate::py_install(c("numpy", "pandas"))
+          # pyarrow lets the use_arrow = TRUE conversion path be exercised
+          reticulate::py_install(c("numpy", "pandas", "pyarrow"))
           pak::local_install()
           cat(sprintf("RETICULATE_PYTHON=%s\n", reticulate::py_config()$python),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
