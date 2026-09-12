@@ -9,7 +9,7 @@
 # user).
 #
 # The matrix spans the Python range we care about on one platform:
-#   * reticulate's own default miniconda Python (what most users get);
+#   * simple_python()'s own shipped default (3.12) -- what most users get;
 #   * the floor -- Python 3.9, caveclient's current minimum;
 #   * the ceiling -- Python 3.13, the newest stable release the current
 #     reticulate fully supports (3.14 is not yet).
@@ -31,15 +31,15 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - { label: "py-reticulate-default", python: "" }
+          - { label: "py-shipped-default", python: "" }
           - { label: "py-3.9-min", python: "3.9" }
           - { label: "py-3.13-max", python: "3.13" }
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      # Empty for the "reticulate default" leg; a version string otherwise. Read
-      # in the provisioning step and applied before install_miniconda() so it
-      # controls the Python version of reticulate's r-reticulate environment.
+      # Empty for the "shipped default" leg (exercises simple_python()'s own
+      # default pin, 3.12); a version string otherwise, passed to
+      # simple_python(python_version=) in the provisioning step.
       NATPY_PYTHON_VERSION: ${{ matrix.config.python }}
     steps:
       - uses: actions/checkout@v4
@@ -55,22 +55,25 @@ jobs:
 
       - name: Install nat.python and provision Python via simple_python()
         run: |
-          v <- Sys.getenv("NATPY_PYTHON_VERSION")
-          if (nzchar(v)) {
-            # simple_python() -> install_miniconda() honours this, so it pins the
-            # Python version of the managed r-reticulate environment.
-            Sys.setenv(RETICULATE_MINICONDA_PYTHON_VERSION = v)
-            message("Pinning miniconda Python to ", v)
-          } else {
-            message("Using reticulate's default miniconda Python")
-          }
+          v <- Sys.getenv("NATPY_PYTHON_VERSION")   # "" on the shipped-default leg
           pak::local_install()
           library(nat.python)
           # The end-user path: provision miniconda + r-reticulate + pandas (via
           # pip, pulling a mutually-compatible numpy). "minimal" is nat.python's
-          # own baseline, all pandas2df() needs.
-          simple_python("minimal")
+          # own baseline, all pandas2df() needs. With no version the shipped
+          # default (3.12) is pinned; the matrix legs pass one explicitly.
+          if (nzchar(v)) {
+            simple_python("minimal", python_version = v)
+          } else {
+            simple_python("minimal")
+          }
           print(py_module_info(c("numpy", "pandas")))
+          # Assert the interpreter is the one we asked for (3.12 by default).
+          want <- if (nzchar(v)) v else "3.12"
+          have <- as.character(reticulate::py_config()$version)
+          if (!startsWith(have, want))
+            stop(sprintf("Provisioned Python %s, expected %s", have, want))
+          message("Provisioned Python ", have, " (wanted ", want, ")")
           py <- reticulate::py_config()$python
           cat(sprintf("RETICULATE_PYTHON=%s\n", py),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)

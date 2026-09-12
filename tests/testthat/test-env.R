@@ -10,6 +10,33 @@ test_that("np_condaenv honours the option and defaults to r-reticulate", {
   expect_identical(np_condaenv(), "my-env")
 })
 
+test_that("resolve_python_version honours the precedence chain", {
+  withr::local_options(nat.python.python_version = NULL)
+  withr::local_envvar(RETICULATE_MINICONDA_PYTHON_VERSION = "")
+  # nothing set anywhere -> built-in default
+  expect_identical(resolve_python_version(), "3.12")
+  # a pre-set env var wins over the default (so CI's matrix pin is respected)
+  withr::local_envvar(RETICULATE_MINICONDA_PYTHON_VERSION = "3.9")
+  expect_identical(resolve_python_version(), "3.9")
+  # the option beats the env var
+  withr::local_options(nat.python.python_version = "3.11")
+  expect_identical(resolve_python_version(), "3.11")
+  # an explicit argument beats everything
+  expect_identical(resolve_python_version("3.13"), "3.13")
+})
+
+test_that("resolve_python_version treats NA/empty as 'do not pin'", {
+  withr::local_options(nat.python.python_version = NULL)
+  withr::local_envvar(RETICULATE_MINICONDA_PYTHON_VERSION = "3.9")
+  # NA at the arg level defers even when an env var is set
+  expect_identical(resolve_python_version(NA), NA_character_)
+  # "" at the option level likewise defers
+  withr::local_options(nat.python.python_version = "")
+  expect_identical(resolve_python_version(), NA_character_)
+  # a bad (length != 1) value errors
+  expect_error(resolve_python_version(c("3.11", "3.12")), "single value")
+})
+
 test_that("ownpythonrequested reflects RETICULATE_PYTHON", {
   withr::local_envvar(RETICULATE_PYTHON = "")
   expect_false(ownpythonrequested())

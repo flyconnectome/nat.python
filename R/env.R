@@ -11,6 +11,45 @@
 # with options(nat.python.condaenv = ...).
 np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 
+# Resolve the Python version to pin for the managed miniconda environment.
+# Precedence: explicit `python_version` arg > options(nat.python.python_version)
+# > a pre-set RETICULATE_MINICONDA_PYTHON_VERSION > the built-in default "3.12".
+# NA or "" (at the arg or option level) means "do not pin -- defer to
+# reticulate's own default", signalled by returning NA_character_.
+resolve_python_version <- function(python_version = NULL) {
+  if (is.null(python_version))
+    python_version <- getOption("nat.python.python_version", NULL)
+  if (!is.null(python_version)) {
+    if (length(python_version) != 1L)
+      cli::cli_abort("{.arg python_version} must be a single value.")
+    if (is.na(python_version) || !nzchar(python_version)) return(NA_character_)
+    return(as.character(python_version))
+  }
+  env <- Sys.getenv("RETICULATE_MINICONDA_PYTHON_VERSION")
+  if (nzchar(env)) return(env)
+  "3.12"
+}
+
+# Warn (rather than silently rebuild) when the managed environment's interpreter
+# does not match the version we asked for -- reticulate keeps an existing env's
+# Python, so a pin only takes effect on a fresh install.
+warn_python_version_mismatch <- function(target) {
+  if (is.na(target)) return(invisible())
+  cfg <- tryCatch(reticulate::py_discover_config(), error = function(e) NULL)
+  # $version can be a numeric_version, so coerce before string ops (nzchar
+  # tolerates that but startsWith does not).
+  have <- if (!is.null(cfg)) as.character(cfg$version) else NULL
+  if (length(have) != 1L || is.na(have) || !nzchar(have)) return(invisible())
+  want <- sub("^([0-9]+\\.[0-9]+).*", "\\1", target)
+  if (!startsWith(have, want))
+    cli::cli_warn(c(
+      "The managed Python is version {have}, not the requested {target}.",
+      "i" = "An existing environment keeps its interpreter; to rebuild at {target}:",
+      " " = paste("run {.run nat.python::simple_python(\"cleanenv\")} then",
+                  "{.run nat.python::simple_python()}.")))
+  invisible()
+}
+
 #' Install a managed Python environment for R
 #'
 #' @description Sets up (and optionally populates) a dedicated miniconda Python
@@ -36,12 +75,25 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #'   ([forget_module_version()]) and the [check_module()] memoise cache are
 #'   cleared so that subsequent checks reflect the new environment.
 #'
+#'   The managed environment's Python interpreter is pinned to a known-good
+#'   version (`python_version`, default `"3.12"`) rather than whatever reticulate
+#'   would otherwise select, which on a fresh install can be a bleeding-edge
+#'   Python that key packages do not yet support. If an environment already
+#'   exists at a different version it is kept (not silently rebuilt) and a
+#'   warning points at `simple_python("cleanenv")`.
+#'
 #' @param pyinstall Which package bundle to install. One of `"basic"`, `"full"`,
 #'   `"extra"`, `"minimal"`, `"cleanenv"`, `"blast"` or `"none"`.
 #' @param pkgs Optional character vector of additional Python packages (pip
 #'   specifications) to install into the environment.
 #' @param miniconda Whether to use the managed miniconda environment (strongly
 #'   recommended). When `FALSE` your current Python is used as-is.
+#' @param python_version Python version to pin for the managed miniconda
+#'   environment. `NULL` (the default) resolves to
+#'   `getOption("nat.python.python_version", "3.12")`, falling back to any
+#'   pre-set `RETICULATE_MINICONDA_PYTHON_VERSION`; pass a string like `"3.11"`
+#'   to override, or `NA` to not pin and defer to reticulate's own default.
+#'   Ignored when `miniconda = FALSE`.
 #'
 #' @return Invisibly `NULL`. Called for its side effect of provisioning Python.
 #' @export
@@ -54,7 +106,7 @@ np_condaenv <- function() getOption("nat.python.condaenv", "r-reticulate")
 #' }
 simple_python <- function(pyinstall = c("basic", "full", "extra", "minimal",
                                         "cleanenv", "blast", "none"),
-                          pkgs = NULL, miniconda = TRUE) {
+                          pkgs = NULL, miniconda = TRUE, python_version = NULL) {
 
   check_reticulate(check_python = FALSE)
   check_python(initialize = FALSE)
@@ -68,9 +120,10 @@ simple_python <- function(pyinstall = c("basic", "full", "extra", "minimal",
     forget_module_version()
     forget_check_module()
   })
+  pyver <- resolve_python_version(python_version)
   pyinstall <- match.arg(pyinstall)
   if (pyinstall != "none")
-    simple_python_base(pyinstall, miniconda)
+    simple_python_base(pyinstall, miniconda, python_version = pyver)
   if (pyinstall %in% c("cleanenv", "blast")) return(invisible(NULL))
 
   if (pyinstall %in% c("minimal", "basic", "full", "extra")) {
@@ -201,7 +254,7 @@ update_miniconda_base <- function() {
   length(js$actions) > 0
 }
 
-simple_python_base <- function(what, miniconda) {
+simple_python_base <- function(what, miniconda, python_version = NA_character_) {
   if (what == "cleanenv") {
     checkownpython(miniconda)
     e <- default_pyenv()
@@ -236,6 +289,21 @@ simple_python_base <- function(what, miniconda) {
                     "{.run usethis::edit_r_environ()}."),
         "i" = "If you are sure, use {.code simple_python(miniconda = FALSE)}."))
 
+    # Pin the interpreter version of the managed environment. reticulate's
+    # install_miniconda()/conda_create() read RETICULATE_MINICONDA_PYTHON_VERSION,
+    # so set it for the duration of provisioning (restored on exit) rather than
+    # leaving reticulate to pick, which on a fresh install can be a bleeding-edge
+    # Python. NA means the caller asked us not to pin.
+    if (!is.na(python_version)) {
+      old <- Sys.getenv("RETICULATE_MINICONDA_PYTHON_VERSION", unset = NA)
+      Sys.setenv(RETICULATE_MINICONDA_PYTHON_VERSION = python_version)
+      on.exit(if (is.na(old))
+                Sys.unsetenv("RETICULATE_MINICONDA_PYTHON_VERSION")
+              else Sys.setenv(RETICULATE_MINICONDA_PYTHON_VERSION = old),
+              add = TRUE)
+      cli::cli_inform("Targeting Python {python_version} for the managed environment")
+    }
+
     cli::cli_inform("Installing/updating a dedicated miniconda Python environment for R")
     tryCatch({
       reticulate::install_miniconda()
@@ -248,7 +316,9 @@ simple_python_base <- function(what, miniconda) {
     condaenv <- np_condaenv()
     if (nzchar(condaenv) && condaenv != "r-reticulate")
       reticulate::conda_create(envname = condaenv,
-                               conda = reticulate::miniconda_path())
+                               conda = reticulate::miniconda_path(),
+                               python_version = if (!is.na(python_version))
+                                 python_version)
     if (py_was_running && pychanged) {
       cli::cli_abort(c(
         "You have just updated your version of Python on disk.",
@@ -258,6 +328,7 @@ simple_python_base <- function(what, miniconda) {
     cli::cli_inform("Ensuring pip is available in conda environment {.val {condaenv}}")
     reticulate::conda_install(envname = condaenv, packages = "pip")
     reticulate::use_miniconda(condaenv)
+    warn_python_version_mismatch(python_version)
   } else {
     cli::cli_inform(c(
       "Using the following existing Python install. I hope you know what you're doing!"))

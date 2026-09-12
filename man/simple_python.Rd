@@ -7,7 +7,8 @@
 simple_python(
   pyinstall = c("basic", "full", "extra", "minimal", "cleanenv", "blast", "none"),
   pkgs = NULL,
-  miniconda = TRUE
+  miniconda = TRUE,
+  python_version = NULL
 )
 }
 \arguments{
@@ -19,6 +20,13 @@ specifications) to install into the environment.}
 
 \item{miniconda}{Whether to use the managed miniconda environment (strongly
 recommended). When \code{FALSE} your current Python is used as-is.}
+
+\item{python_version}{Python version to pin for the managed miniconda
+environment. \code{NULL} (the default) resolves to
+\code{getOption("nat.python.python_version", "3.12")}, falling back to any
+pre-set \code{RETICULATE_MINICONDA_PYTHON_VERSION}; pass a string like \code{"3.11"}
+to override, or \code{NA} to not pin and defer to reticulate's own default.
+Ignored when \code{miniconda = FALSE}.}
 }
 \value{
 Invisibly \code{NULL}. Called for its side effect of provisioning Python.
@@ -47,6 +55,13 @@ remove an environment; they never delete anything themselves.
 After any installation the cached module versions
 (\code{\link[=forget_module_version]{forget_module_version()}}) and the \code{\link[=check_module]{check_module()}} memoise cache are
 cleared so that subsequent checks reflect the new environment.
+
+The managed environment's Python interpreter is pinned to a known-good
+version (\code{python_version}, default \code{"3.12"}) rather than whatever reticulate
+would otherwise select, which on a fresh install can be a bleeding-edge
+Python that key packages do not yet support. If an environment already
+exists at a different version it is kept (not silently rebuilt) and a
+warning points at \code{simple_python("cleanenv")}.
 }
 \examples{
 \dontrun{
