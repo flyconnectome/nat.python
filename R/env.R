@@ -36,11 +36,14 @@ resolve_python_version <- function(python_version = NULL) {
 warn_python_version_mismatch <- function(target) {
   if (is.na(target)) return(invisible())
   cfg <- tryCatch(reticulate::py_discover_config(), error = function(e) NULL)
-  if (is.null(cfg) || !isTRUE(nzchar(cfg$version))) return(invisible())
+  # $version can be a numeric_version, so coerce before string ops (nzchar
+  # tolerates that but startsWith does not).
+  have <- if (!is.null(cfg)) as.character(cfg$version) else NULL
+  if (length(have) != 1L || is.na(have) || !nzchar(have)) return(invisible())
   want <- sub("^([0-9]+\\.[0-9]+).*", "\\1", target)
-  if (!startsWith(cfg$version, want))
+  if (!startsWith(have, want))
     cli::cli_warn(c(
-      "The managed Python is version {cfg$version}, not the requested {target}.",
+      "The managed Python is version {have}, not the requested {target}.",
       "i" = "An existing environment keeps its interpreter; to rebuild at {target}:",
       " " = paste("run {.run nat.python::simple_python(\"cleanenv\")} then",
                   "{.run nat.python::simple_python()}.")))
