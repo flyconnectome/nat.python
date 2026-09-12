@@ -54,7 +54,8 @@ run and one environment to manage.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">simple_python</span><span class="op">(</span></span>
 <span>  pyinstall <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"basic"</span>, <span class="st">"full"</span>, <span class="st">"extra"</span>, <span class="st">"minimal"</span>, <span class="st">"cleanenv"</span>, <span class="st">"blast"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  pkgs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  miniconda <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  miniconda <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  python_version <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -75,6 +76,15 @@ specifications) to install into the environment.</p></dd>
 <dt id="arg-miniconda">miniconda<a class="anchor" aria-label="anchor" href="#arg-miniconda"></a></dt>
 <dd><p>Whether to use the managed miniconda environment (strongly
 recommended). When <code>FALSE</code> your current Python is used as-is.</p></dd>
+
+
+<dt id="arg-python-version">python_version<a class="anchor" aria-label="anchor" href="#arg-python-version"></a></dt>
+<dd><p>Python version to pin for the managed miniconda
+environment. <code>NULL</code> (the default) resolves to
+<code>getOption("nat.python.python_version", "3.12")</code>, falling back to any
+pre-set <code>RETICULATE_MINICONDA_PYTHON_VERSION</code>; pass a string like <code>"3.11"</code>
+to override, or <code>NA</code> to not pin and defer to reticulate's own default.
+Ignored when <code>miniconda = FALSE</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -98,6 +108,12 @@ remove an environment; they never delete anything themselves.</p>
 <p>After any installation the cached module versions
 (<code><a href="module_version.html">forget_module_version()</a></code>) and the <code><a href="check_module.html">check_module()</a></code> memoise cache are
 cleared so that subsequent checks reflect the new environment.</p>
+<p>The managed environment's Python interpreter is pinned to a known-good
+version (<code>python_version</code>, default <code>"3.12"</code>) rather than whatever reticulate
+would otherwise select, which on a fresh install can be a bleeding-edge
+Python that key packages do not yet support. If an environment already
+exists at a different version it is kept (not silently rebuilt) and a
+warning points at <code>simple_python("cleanenv")</code>.</p>
     </div>
 
     <div class="section level2">

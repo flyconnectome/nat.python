@@ -35,6 +35,8 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0.9000" id="natpython-0209000-development-version">nat.python 0.2.0.9000 (development version)<a class="anchor" aria-label="anchor" href="#natpython-0209000-development-version"></a></h2>
 <ul><li>
+<code><a href="../reference/simple_python.html">simple_python()</a></code> now pins the managed environment’s Python interpreter to a known-good version (new <code>python_version</code> argument, default <code>"3.12"</code>, overridable via <code>options(nat.python.python_version=)</code>) instead of letting reticulate pick, which on a fresh install can be a bleeding-edge Python that key packages do not yet support. An existing environment at a different version is kept, with a warning pointing at <code>simple_python("cleanenv")</code>.</li>
+<li>
 <code><a href="../reference/pandas2df.html">pandas2df()</a></code> now converts pandas extension-array columns that reticulate leaves unconverted, in particular pandas 3.0’s default Arrow-backed string dtype (PDEP-14): string columns become R character vectors and other Arrow columns (e.g. <code>int64[pyarrow]</code> ids) map to the same R types as their native-dtype equivalents (<a href="https://github.com/flyconnectome/nat.python/issues/6" class="external-link">#6</a>).</li>
 <li>
 <code><a href="../reference/simple_python.html">simple_python()</a></code> pins the baseline install to <code>pandas &lt; 3</code> for now. Although <code><a href="../reference/pandas2df.html">pandas2df()</a></code> handles pandas 3.0, the pin is retained as a caution while the wider ecosystem settles on pandas 3; lift it (back to <code>pandas</code>) once ready.</li>

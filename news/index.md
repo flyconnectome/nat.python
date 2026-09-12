@@ -2,6 +2,14 @@
 
 ## nat.python 0.2.0.9000 (development version)
 
+- [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
+  now pins the managed environment’s Python interpreter to a known-good
+  version (new `python_version` argument, default `"3.12"`, overridable
+  via `options(nat.python.python_version=)`) instead of letting
+  reticulate pick, which on a fresh install can be a bleeding-edge
+  Python that key packages do not yet support. An existing environment
+  at a different version is kept, with a warning pointing at
+  `simple_python("cleanenv")`.
 - [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
   now converts pandas extension-array columns that reticulate leaves
   unconverted, in particular pandas 3.0’s default Arrow-backed string

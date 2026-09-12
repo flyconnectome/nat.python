@@ -12,7 +12,8 @@ one command to run and one environment to manage.
 simple_python(
   pyinstall = c("basic", "full", "extra", "minimal", "cleanenv", "blast", "none"),
   pkgs = NULL,
-  miniconda = TRUE
+  miniconda = TRUE,
+  python_version = NULL
 )
 ```
 
@@ -32,6 +33,15 @@ simple_python(
 
   Whether to use the managed miniconda environment (strongly
   recommended). When `FALSE` your current Python is used as-is.
+
+- python_version:
+
+  Python version to pin for the managed miniconda environment. `NULL`
+  (the default) resolves to
+  `getOption("nat.python.python_version", "3.12")`, falling back to any
+  pre-set `RETICULATE_MINICONDA_PYTHON_VERSION`; pass a string like
+  `"3.11"` to override, or `NA` to not pin and defer to reticulate's own
+  default. Ignored when `miniconda = FALSE`.
 
 ## Value
 
@@ -60,6 +70,13 @@ and the
 [`check_module()`](https://flyconnectome.github.io/nat.python/reference/check_module.md)
 memoise cache are cleared so that subsequent checks reflect the new
 environment.
+
+The managed environment's Python interpreter is pinned to a known-good
+version (`python_version`, default `"3.12"`) rather than whatever
+reticulate would otherwise select, which on a fresh install can be a
+bleeding-edge Python that key packages do not yet support. If an
+environment already exists at a different version it is kept (not
+silently rebuilt) and a warning points at `simple_python("cleanenv")`.
 
 ## Examples
 
