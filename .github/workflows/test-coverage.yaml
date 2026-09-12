@@ -1,7 +1,7 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 # Test coverage via covr, uploaded to Codecov. Python is provided the same way
-# R-CMD-check.yaml does -- through reticulate's managed miniconda -- so coverage
-# exercises the same kind of interpreter nat.python is designed to manage.
+# R-CMD-check.yaml does -- through nat.python's own simple_python() engine -- so
+# coverage exercises the exact provisioning path nat.python ships.
 on:
   push:
     branches: [main, master]
@@ -30,16 +30,18 @@ jobs:
           extra-packages: any::covr, any::xml2
           needs: coverage
 
-      - name: Provision Python (reticulate miniconda) and install nat.python
-        # Mirrors R-CMD-check.yaml's default leg: reticulate's own miniconda,
-        # numpy + pandas installed, then pin RETICULATE_PYTHON to that exact
-        # interpreter for the coverage run.
+      - name: Install nat.python and provision Python via simple_python()
+        # Mirrors R-CMD-check.yaml's default leg, but provisions through
+        # nat.python's own simple_python(): miniconda + r-reticulate + pandas
+        # (via pip). pyarrow is added so the use_arrow = TRUE conversion path is
+        # exercised. RETICULATE_PYTHON is then pinned to that interpreter for the
+        # coverage run.
         shell: Rscript {0}
         run: |
-          reticulate::install_miniconda()
-          # pyarrow lets the use_arrow = TRUE conversion path be exercised
-          reticulate::py_install(c("numpy", "pandas", "pyarrow"))
           pak::local_install()
+          library(nat.python)
+          simple_python("minimal", pkgs = "pyarrow")
+          print(py_module_info(c("numpy", "pandas", "pyarrow")))
           cat(sprintf("RETICULATE_PYTHON=%s\n", reticulate::py_config()$python),
               file = Sys.getenv("GITHUB_ENV"), append = TRUE)
 

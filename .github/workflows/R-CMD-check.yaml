@@ -1,12 +1,12 @@
 # Single-platform (Ubuntu) R CMD check, including the testthat suite, across a
 # small matrix of Python versions.
 #
-# Python is provided the way real users get it -- through reticulate's managed
-# miniconda -- rather than a bare system Python, so CI exercises the same kind
-# of interpreter nat.python is designed to manage. nat.python itself is installed
-# and used to introspect the environment before the check runs. (Phase 2 will
-# provision Python through nat.python's own environment engine; until then we
-# call reticulate directly.)
+# Python is provided the way real users get it -- through nat.python's own
+# environment engine (simple_python()), which installs miniconda, the
+# r-reticulate env and pandas (via pip). This exercises the exact provisioning
+# path nat.python ships, rather than a hand-rolled reticulate::py_install() call
+# (whose conda-forge pandas could be an interpreter nat.python never gives a
+# user).
 #
 # The matrix spans the Python range we care about on one platform:
 #   * reticulate's own default miniconda Python (what most users get);
@@ -53,19 +53,23 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
 
-      - name: Provision Python (reticulate miniconda) and install nat.python
+      - name: Install nat.python and provision Python via simple_python()
         run: |
           v <- Sys.getenv("NATPY_PYTHON_VERSION")
           if (nzchar(v)) {
+            # simple_python() -> install_miniconda() honours this, so it pins the
+            # Python version of the managed r-reticulate environment.
             Sys.setenv(RETICULATE_MINICONDA_PYTHON_VERSION = v)
-            message("Pinning reticulate miniconda Python to ", v)
+            message("Pinning miniconda Python to ", v)
           } else {
             message("Using reticulate's default miniconda Python")
           }
-          reticulate::install_miniconda()
-          reticulate::py_install(c("numpy", "pandas"))
           pak::local_install()
           library(nat.python)
+          # The end-user path: provision miniconda + r-reticulate + pandas (via
+          # pip, pulling a mutually-compatible numpy). "minimal" is nat.python's
+          # own baseline, all pandas2df() needs.
+          simple_python("minimal")
           print(py_module_info(c("numpy", "pandas")))
           py <- reticulate::py_config()$python
           cat(sprintf("RETICULATE_PYTHON=%s\n", py),
