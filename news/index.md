@@ -1,6 +1,6 @@
 # Changelog
 
-## nat.python 0.2.0.9000 (development version)
+## nat.python 0.3.0
 
 - [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
   now pins the managed environment’s Python interpreter to a known-good
@@ -9,14 +9,15 @@
   reticulate pick, which on a fresh install can be a bleeding-edge
   Python that key packages do not yet support. An existing environment
   at a different version is kept, with a warning pointing at
-  `simple_python("cleanenv")`.
+  `simple_python("cleanenv")`
+  ([\#10](https://github.com/flyconnectome/nat.python/issues/10)).
 - [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
   now converts pandas extension-array columns that reticulate leaves
   unconverted, in particular pandas 3.0’s default Arrow-backed string
   dtype (PDEP-14): string columns become R character vectors and other
   Arrow columns (e.g. `int64[pyarrow]` ids) map to the same R types as
   their native-dtype equivalents
-  ([\#6](https://github.com/flyconnectome/nat.python/issues/6)).
+  ([\#9](https://github.com/flyconnectome/nat.python/issues/9)).
 - [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
   pins the baseline install to `pandas < 3` for now. Although
   [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
@@ -27,6 +28,10 @@
   itself (the end-user path), rather than a bespoke
   [`reticulate::py_install()`](https://rstudio.github.io/reticulate/reference/py_install.html)
   call.
+- Testing: added a test-coverage workflow reporting to Codecov
+  ([\#5](https://github.com/flyconnectome/nat.python/issues/5)) and
+  substantially expanded coverage of previously-untested paths, from 34%
+  to 66% ([\#6](https://github.com/flyconnectome/nat.python/issues/6)).
 
 ## nat.python 0.2.0
 

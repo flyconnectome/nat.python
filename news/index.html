@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nat.python</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,14 +33,15 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.0.9000" id="natpython-0209000-development-version">nat.python 0.2.0.9000 (development version)<a class="anchor" aria-label="anchor" href="#natpython-0209000-development-version"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="natpython-030">nat.python 0.3.0<a class="anchor" aria-label="anchor" href="#natpython-030"></a></h2>
 <ul><li>
-<code><a href="../reference/simple_python.html">simple_python()</a></code> now pins the managed environment’s Python interpreter to a known-good version (new <code>python_version</code> argument, default <code>"3.12"</code>, overridable via <code>options(nat.python.python_version=)</code>) instead of letting reticulate pick, which on a fresh install can be a bleeding-edge Python that key packages do not yet support. An existing environment at a different version is kept, with a warning pointing at <code>simple_python("cleanenv")</code>.</li>
+<code><a href="../reference/simple_python.html">simple_python()</a></code> now pins the managed environment’s Python interpreter to a known-good version (new <code>python_version</code> argument, default <code>"3.12"</code>, overridable via <code>options(nat.python.python_version=)</code>) instead of letting reticulate pick, which on a fresh install can be a bleeding-edge Python that key packages do not yet support. An existing environment at a different version is kept, with a warning pointing at <code>simple_python("cleanenv")</code> (<a href="https://github.com/flyconnectome/nat.python/issues/10" class="external-link">#10</a>).</li>
 <li>
-<code><a href="../reference/pandas2df.html">pandas2df()</a></code> now converts pandas extension-array columns that reticulate leaves unconverted, in particular pandas 3.0’s default Arrow-backed string dtype (PDEP-14): string columns become R character vectors and other Arrow columns (e.g. <code>int64[pyarrow]</code> ids) map to the same R types as their native-dtype equivalents (<a href="https://github.com/flyconnectome/nat.python/issues/6" class="external-link">#6</a>).</li>
+<code><a href="../reference/pandas2df.html">pandas2df()</a></code> now converts pandas extension-array columns that reticulate leaves unconverted, in particular pandas 3.0’s default Arrow-backed string dtype (PDEP-14): string columns become R character vectors and other Arrow columns (e.g. <code>int64[pyarrow]</code> ids) map to the same R types as their native-dtype equivalents (<a href="https://github.com/flyconnectome/nat.python/issues/9" class="external-link">#9</a>).</li>
 <li>
 <code><a href="../reference/simple_python.html">simple_python()</a></code> pins the baseline install to <code>pandas &lt; 3</code> for now. Although <code><a href="../reference/pandas2df.html">pandas2df()</a></code> handles pandas 3.0, the pin is retained as a caution while the wider ecosystem settles on pandas 3; lift it (back to <code>pandas</code>) once ready.</li>
 <li>CI now provisions Python through <code><a href="../reference/simple_python.html">simple_python()</a></code> itself (the end-user path), rather than a bespoke <code><a href="https://rstudio.github.io/reticulate/reference/py_install.html" class="external-link">reticulate::py_install()</a></code> call.</li>
+<li>Testing: added a test-coverage workflow reporting to Codecov (<a href="https://github.com/flyconnectome/nat.python/issues/5" class="external-link">#5</a>) and substantially expanded coverage of previously-untested paths, from 34% to 66% (<a href="https://github.com/flyconnectome/nat.python/issues/6" class="external-link">#6</a>).</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="natpython-020">nat.python 0.2.0<a class="anchor" aria-label="anchor" href="#natpython-020"></a></h2>
