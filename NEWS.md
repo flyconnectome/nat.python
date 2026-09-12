@@ -1,21 +1,24 @@
-# nat.python 0.2.0.9000 (development version)
+# nat.python 0.3.0
 
 * `simple_python()` now pins the managed environment's Python interpreter to a
   known-good version (new `python_version` argument, default `"3.12"`, overridable
   via `options(nat.python.python_version=)`) instead of letting reticulate pick,
   which on a fresh install can be a bleeding-edge Python that key packages do not
   yet support. An existing environment at a different version is kept, with a
-  warning pointing at `simple_python("cleanenv")`.
+  warning pointing at `simple_python("cleanenv")` (#10).
 * `pandas2df()` now converts pandas extension-array columns that reticulate
   leaves unconverted, in particular pandas 3.0's default Arrow-backed string
   dtype (PDEP-14): string columns become R character vectors and other Arrow
   columns (e.g. `int64[pyarrow]` ids) map to the same R types as their
-  native-dtype equivalents (#6).
+  native-dtype equivalents (#9).
 * `simple_python()` pins the baseline install to `pandas < 3` for now. Although
   `pandas2df()` handles pandas 3.0, the pin is retained as a caution while the
   wider ecosystem settles on pandas 3; lift it (back to `pandas`) once ready.
 * CI now provisions Python through `simple_python()` itself (the end-user path),
   rather than a bespoke `reticulate::py_install()` call.
+* Testing: added a test-coverage workflow reporting to Codecov (#5) and
+  substantially expanded coverage of previously-untested paths, from 34% to 66%
+  (#6).
 
 # nat.python 0.2.0
 
