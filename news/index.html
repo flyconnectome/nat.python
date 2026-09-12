@@ -35,7 +35,9 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0.9000" id="natpython-0209000-development-version">nat.python 0.2.0.9000 (development version)<a class="anchor" aria-label="anchor" href="#natpython-0209000-development-version"></a></h2>
 <ul><li>
-<code><a href="../reference/simple_python.html">simple_python()</a></code> now pins the baseline install to <code>pandas &lt; 3</code>. pandas 3.0 makes Arrow-backed strings the default dtype, which <code><a href="../reference/pandas2df.html">pandas2df()</a></code> does not yet convert back to R; the pin keeps the provisioned environment functional until that support lands (<a href="https://github.com/flyconnectome/nat.python/issues/6" class="external-link">#6</a>).</li>
+<code><a href="../reference/pandas2df.html">pandas2df()</a></code> now converts pandas extension-array columns that reticulate leaves unconverted, in particular pandas 3.0’s default Arrow-backed string dtype (PDEP-14): string columns become R character vectors and other Arrow columns (e.g. <code>int64[pyarrow]</code> ids) map to the same R types as their native-dtype equivalents (<a href="https://github.com/flyconnectome/nat.python/issues/6" class="external-link">#6</a>).</li>
+<li>
+<code><a href="../reference/simple_python.html">simple_python()</a></code> pins the baseline install to <code>pandas &lt; 3</code> for now. Although <code><a href="../reference/pandas2df.html">pandas2df()</a></code> handles pandas 3.0, the pin is retained as a caution while the wider ecosystem settles on pandas 3; lift it (back to <code>pandas</code>) once ready.</li>
 <li>CI now provisions Python through <code><a href="../reference/simple_python.html">simple_python()</a></code> itself (the end-user path), rather than a bespoke <code><a href="https://rstudio.github.io/reticulate/reference/py_install.html" class="external-link">reticulate::py_install()</a></code> call.</li>
 </ul></div>
     <div class="section level2">

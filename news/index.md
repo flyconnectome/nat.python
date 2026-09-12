@@ -2,13 +2,18 @@
 
 ## nat.python 0.2.0.9000 (development version)
 
-- [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
-  now pins the baseline install to `pandas < 3`. pandas 3.0 makes
-  Arrow-backed strings the default dtype, which
-  [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
-  does not yet convert back to R; the pin keeps the provisioned
-  environment functional until that support lands
+- [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
+  now converts pandas extension-array columns that reticulate leaves
+  unconverted, in particular pandas 3.0’s default Arrow-backed string
+  dtype (PDEP-14): string columns become R character vectors and other
+  Arrow columns (e.g. `int64[pyarrow]` ids) map to the same R types as
+  their native-dtype equivalents
   ([\#6](https://github.com/flyconnectome/nat.python/issues/6)).
+- [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
+  pins the baseline install to `pandas < 3` for now. Although
+  [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
+  handles pandas 3.0, the pin is retained as a caution while the wider
+  ecosystem settles on pandas 3; lift it (back to `pandas`) once ready.
 - CI now provisions Python through
   [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
   itself (the end-user path), rather than a bespoke

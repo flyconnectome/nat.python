@@ -107,6 +107,11 @@ list of length-1 vectors to an atomic vector, with integer-valued cells
 read as strings so arbitrary-precision Python ints round-trip. Genuine
 list-valued columns (e.g. multi-select values) are left intact.</p></li>
 <li><p>datetime columns are normalised to <code>POSIXct</code> in UTC.</p></li>
+<li><p>pandas extension-array columns that reticulate leaves unconverted – most
+importantly pandas 3.0's default Arrow-backed string dtype – are
+recovered: string columns become character vectors, other Arrow columns
+are classified like object columns (so Arrow-backed ids map like native
+ones).</p></li>
 </ul><p>The optional <code>use_arrow</code> path round-trips through a Feather file and needs
 the Suggested <code>arrow</code> package; <code>bigint</code> does not apply to it.</p>
     </div>

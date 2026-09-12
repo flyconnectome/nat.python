@@ -76,6 +76,12 @@ individual columns:
 
 - datetime columns are normalised to `POSIXct` in UTC.
 
+- pandas extension-array columns that reticulate leaves unconverted –
+  most importantly pandas 3.0's default Arrow-backed string dtype – are
+  recovered: string columns become character vectors, other Arrow
+  columns are classified like object columns (so Arrow-backed ids map
+  like native ones).
+
 The optional `use_arrow` path round-trips through a Feather file and
 needs the Suggested `arrow` package; `bigint` does not apply to it.
 
