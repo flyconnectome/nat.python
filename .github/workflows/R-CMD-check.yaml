@@ -62,8 +62,11 @@ jobs:
           # pip, pulling a mutually-compatible numpy). "minimal" is nat.python's
           # own baseline, all pandas2df() needs. With no version the shipped
           # default (3.12) is pinned; the matrix legs pass one explicitly.
-          if (nzchar(v)) simple_python("minimal", python_version = v)
-          else           simple_python("minimal")
+          if (nzchar(v)) {
+            simple_python("minimal", python_version = v)
+          } else {
+            simple_python("minimal")
+          }
           print(py_module_info(c("numpy", "pandas")))
           # Assert the interpreter is the one we asked for (3.12 by default).
           want <- if (nzchar(v)) v else "3.12"
