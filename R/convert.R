@@ -24,6 +24,11 @@
 #'     read as strings so arbitrary-precision Python ints round-trip. Genuine
 #'     list-valued columns (e.g. multi-select values) are left intact.
 #'   * datetime columns are normalised to `POSIXct` in UTC.
+#'   * pandas extension-array columns that reticulate leaves unconverted -- most
+#'     importantly pandas 3.0's default Arrow-backed string dtype -- are
+#'     recovered: string columns become character vectors, other Arrow columns
+#'     are classified like object columns (so Arrow-backed ids map like native
+#'     ones).
 #'
 #'   The optional `use_arrow` path round-trips through a Feather file and needs
 #'   the Suggested `arrow` package; `bigint` does not apply to it.
@@ -138,6 +143,24 @@ pandas2df_inmem <- function(df, tibble = FALSE, bigint = "auto") {
     res <- tibble::as_tibble(res)
   }
 
+  # pandas extension arrays reticulate cannot convert come back as raw python
+  # objects. The one that now arrives by default is pandas 3.0's Arrow-backed
+  # string dtype (PDEP-14), but any explicit ArrowDtype column lands here too.
+  # Convert each from its string values: a declared string dtype becomes an R
+  # character vector; any other extension column is classified like an object
+  # column, so Arrow-backed ids and numbers map to the same R types as their
+  # native-dtype equivalents.
+  ext_cols <- names(res)[vapply(res, function(v)
+    inherits(v, "python.builtin.object"), logical(1))]
+  for (col in ext_cols) {
+    vals <- pandas_series_character_values(reticulate::py_get_item(df, col))
+    if (is.null(vals)) next
+    res[[col]] <- if (col %in% names(dtypes) && is_string_dtype(dtypes[[col]]))
+      vals
+    else
+      classify_object_values(vals, bigint = bigint, col = col)
+  }
+
   # splice the fast-converted int columns back into their original positions
   splice_fast_int <- function(res) {
     for (col in names(fast_int)) res[[col]] <- fast_int[[col]]
@@ -203,6 +226,13 @@ pandas_py_to_r_frame <- function(df) {
         invokeRestart("muffleWarning")
     }
   )
+}
+
+# Does a pandas dtype string denote a string dtype? Covers the StringDtype
+# family ("string", "string[python]", "string[pyarrow]"), Arrow large strings,
+# and pandas 3.0's new default string dtype, which reports simply as "str".
+is_string_dtype <- function(dt) {
+  grepl("^(str|string|large_string)(\\[.*\\])?$", tolower(dt))
 }
 
 pandas_dataframe_dtypes <- function(df) {

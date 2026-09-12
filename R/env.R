@@ -77,10 +77,10 @@ simple_python <- function(pyinstall = c("basic", "full", "extra", "minimal",
     # nat.python's own baseline: pandas2df() needs pandas, and numpy rides in
     # with it. Every richer bundle builds on top of this.
     #
-    # Pinned to pandas < 3 for now: pandas 3.0 makes Arrow-backed strings the
-    # default dtype (PDEP-14), which pandas2df() does not yet convert back to R
-    # (string columns return as raw ArrowStringArray objects). Lift this once
-    # pandas2df() handles the Arrow string dtype.
+    # Pinned to pandas < 3 for now. pandas2df() does handle pandas 3.0's default
+    # Arrow-backed string dtype (PDEP-14), but the pin is kept as a caution while
+    # the wider ecosystem settles on pandas 3; lift it (back to "pandas") once
+    # ready.
     cli::cli_inform("Installing pandas (<3 for now; brings numpy)")
     ourpip("pandas<3")
   }

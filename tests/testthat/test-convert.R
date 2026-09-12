@@ -198,3 +198,50 @@ test_that("pandas2df fast-path preserves column order and nullable ids", {
   expect_identical(out$n, c(1L, 2L, 3L))
   expect_identical(out$label, c("a", "b", "c"))
 })
+
+test_that("is_string_dtype recognises the string dtype family", {
+  expect_true(is_string_dtype("str"))                 # pandas 3.0 default
+  expect_true(is_string_dtype("string"))
+  expect_true(is_string_dtype("string[python]"))
+  expect_true(is_string_dtype("string[pyarrow]"))
+  expect_true(is_string_dtype("large_string[pyarrow]"))
+  expect_false(is_string_dtype("object"))
+  expect_false(is_string_dtype("int64[pyarrow]"))
+  expect_false(is_string_dtype("struct"))             # not a string dtype
+})
+
+test_that("pandas2df converts Arrow-backed string columns to character", {
+  skip_if_no_module("pandas")
+  skip_if_no_module("pyarrow")
+  # An explicit Arrow-backed string column reproduces pandas 3.0's default
+  # dtype (an ArrowStringArray) even under pandas 2: reticulate leaves it as a
+  # raw python object, and pandas2df must recover an R character vector (with a
+  # missing cell -> NA), while a neighbouring numeric column is unaffected.
+  df <- reticulate::py_eval(
+    paste0("__import__('pandas').DataFrame({",
+           "'label': __import__('pandas').array(",
+           "['a', 'b', None], dtype='string[pyarrow]'), ",
+           "'n': [1, 2, 3]})"),
+    convert = FALSE)
+  out <- pandas2df(df)
+  expect_type(out$label, "character")
+  expect_identical(out$label, c("a", "b", NA))
+  expect_identical(out$n, c(1L, 2L, 3L))
+})
+
+test_that("pandas2df converts Arrow-backed integer id columns", {
+  skip_if_no_module("pandas")
+  skip_if_no_module("pyarrow")
+  # A general (non-string) Arrow extension column: 64-bit ids in an
+  # int64[pyarrow] column must map to the same integer64 the native int64 path
+  # produces, not survive as a raw python object.
+  ids <- c("720575940621039145", "720575940626877799")
+  df <- reticulate::py_eval(
+    paste0("__import__('pandas').DataFrame({",
+           "'id': __import__('pandas').array([",
+           paste(ids, collapse = ", "), "], dtype='int64[pyarrow]')})"),
+    convert = FALSE)
+  out <- pandas2df(df)
+  expect_s3_class(out$id, "integer64")
+  expect_identical(as.character(out$id), ids)
+})
