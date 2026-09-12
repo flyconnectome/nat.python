@@ -1,5 +1,20 @@
 # Changelog
 
+## nat.python 0.2.0.9000 (development version)
+
+- [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
+  now pins the baseline install to `pandas < 3`. pandas 3.0 makes
+  Arrow-backed strings the default dtype, which
+  [`pandas2df()`](https://flyconnectome.github.io/nat.python/reference/pandas2df.md)
+  does not yet convert back to R; the pin keeps the provisioned
+  environment functional until that support lands
+  ([\#6](https://github.com/flyconnectome/nat.python/issues/6)).
+- CI now provisions Python through
+  [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)
+  itself (the end-user path), rather than a bespoke
+  [`reticulate::py_install()`](https://rstudio.github.io/reticulate/reference/py_install.html)
+  call.
+
 ## nat.python 0.2.0
 
 First tagged release. A small shared layer of Python interoperability
