@@ -1,5 +1,7 @@
 # Changelog
 
+## nat.python 0.3.0.9000 (development version)
+
 ## nat.python 0.3.0
 
 - [`simple_python()`](https://flyconnectome.github.io/nat.python/reference/simple_python.md)

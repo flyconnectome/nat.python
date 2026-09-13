@@ -8,16 +8,16 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/flyconnectome/nat.python/blob/v0.3.0/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/flyconnectome/nat.python/blob/main/DESCRIPTION)
 
 Jefferis G (2026). *nat.python: Python Interoperability and Environment
-Management for the 'natverse'*. R package version 0.3.0,
+Management for the 'natverse'*. R package version 0.3.0.9000,
 <https://github.com/flyconnectome/nat.python>.
 
     @Manual{,
       title = {nat.python: Python Interoperability and Environment Management for the 'natverse'},
       author = {Gregory Jefferis},
       year = {2026},
-      note = {R package version 0.3.0},
+      note = {R package version 0.3.0.9000},
       url = {https://github.com/flyconnectome/nat.python},
     }
